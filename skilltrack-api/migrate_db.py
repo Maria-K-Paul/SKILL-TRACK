@@ -89,14 +89,24 @@ def run_migration():
                     conn.execute(text("ALTER TABLE enrollments ADD COLUMN is_common_enrollment BOOLEAN NOT NULL DEFAULT FALSE"))
                 print("  ✓ Added enrollments.is_common_enrollment")
 
-                # Backfill is_common_enrollment
-                conn.execute(text("""
-                    UPDATE enrollments
-                    SET is_common_enrollment = CASE
-                        WHEN domain_id IN (SELECT id FROM domains WHERE is_common = 1) THEN 1
-                        ELSE 0
-                    END
-                """))
+                # Backfill is_common_enrollment (use proper boolean syntax for PostgreSQL)
+                if is_sqlite:
+                    conn.execute(text("""
+                        UPDATE enrollments
+                        SET is_common_enrollment = CASE
+                            WHEN domain_id IN (SELECT id FROM domains WHERE is_common = 1) THEN 1
+                            ELSE 0
+                        END
+                    """))
+                else:
+                    # PostgreSQL requires TRUE/FALSE for boolean columns
+                    conn.execute(text("""
+                        UPDATE enrollments
+                        SET is_common_enrollment = CASE
+                            WHEN domain_id IN (SELECT id FROM domains WHERE is_common = TRUE) THEN TRUE
+                            ELSE FALSE
+                        END
+                    """))
                 print("  ✓ Backfilled is_common_enrollment")
 
         # ============================================================
