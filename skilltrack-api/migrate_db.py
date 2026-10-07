@@ -132,8 +132,23 @@ def run_migration():
 
             # Remove duplicates before creating unique index
             if not index_exists(conn, 'idx_slots_level_time_venue'):
-                # Find and keep only the first occurrence of each duplicate
+                # First, update foreign key references before deleting duplicates
                 if is_sqlite:
+                    # SQLite: Create mapping and update exam_keys
+                    conn.execute(text("""
+                        UPDATE exam_keys
+                        SET slot_id = (
+                            SELECT MIN(s2.rowid)
+                            FROM slots s1
+                            JOIN slots s2 ON s1.level_id = s2.level_id
+                                AND s1.starts_at = s2.starts_at
+                                AND s1.venue = s2.venue
+                            WHERE s1.rowid = exam_keys.slot_id
+                        )
+                        WHERE slot_id IS NOT NULL
+                    """))
+
+                    # Now safe to delete duplicates
                     conn.execute(text("""
                         DELETE FROM slots
                         WHERE rowid NOT IN (
@@ -143,17 +158,34 @@ def run_migration():
                         )
                     """))
                 else:
-                    # PostgreSQL: use ctid instead of rowid
+                    # PostgreSQL: Update exam_keys to point to the slot we're keeping
+                    conn.execute(text("""
+                        UPDATE exam_keys
+                        SET slot_id = keeper.id
+                        FROM (
+                            SELECT
+                                s1.id as old_id,
+                                MIN(s2.id) as id
+                            FROM slots s1
+                            JOIN slots s2 ON s1.level_id = s2.level_id
+                                AND s1.starts_at = s2.starts_at
+                                AND s1.venue = s2.venue
+                            GROUP BY s1.id
+                        ) keeper
+                        WHERE exam_keys.slot_id = keeper.old_id
+                    """))
+                    print("  ✓ Updated exam_keys foreign key references")
+
+                    # Now safe to delete duplicates (use id instead of ctid for clarity)
                     conn.execute(text("""
                         DELETE FROM slots
-                        WHERE ctid NOT IN (
-                            SELECT MIN(ctid)
+                        WHERE id NOT IN (
+                            SELECT MIN(id)
                             FROM slots
                             GROUP BY level_id, starts_at, venue
                         )
                     """))
 
-                duplicates_removed = conn.execute(text("SELECT COUNT(*) FROM slots")).scalar()
                 print(f"  ✓ Removed duplicate slots (keeping first occurrence)")
 
                 # Now create the unique index
