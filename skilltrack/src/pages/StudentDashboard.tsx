@@ -673,9 +673,8 @@ function SlotBookingCard({
     setBookBusy(true)
     setBookErr('')
     try {
-      await api.post(`/slots/${slotId}/book`, { acknowledgement: true })
+      await onAct(() => api.post(`/slots/${slotId}/book`, { acknowledgement: true }))
       setBookingSlot(null)
-      onAct(() => Promise.resolve())
     } catch (e) {
       setBookErr(errorMessage(e as Error))
     } finally {
@@ -693,9 +692,8 @@ function SlotBookingCard({
     if (!active_booking) return
     setChangeBusy(true)
     try {
-      await api.post(`/me/bookings/${active_booking.booking_id}/change`, { new_slot_id: newSlotId })
+      await onAct(() => api.post(`/me/bookings/${active_booking.booking_id}/change`, { new_slot_id: newSlotId }))
       setChangeSlotId(null)
-      onAct(() => Promise.resolve())
     } catch (e) {
       // bubble up via onAct error handling isn't available here — handle inline
       alert(errorMessage(e as Error))
