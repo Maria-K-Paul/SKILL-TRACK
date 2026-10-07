@@ -1051,21 +1051,13 @@ export default function StudentDashboard() {
                     </Link>
                   )}
                 </>
-              ) : enrollment ? (
-                <>
-                  <div className="text-4xl font-bold text-slate-900">
-                    {enrollment.points} <span className="text-base font-normal text-slate-500">/ {data.points_to_unlock} pts</span>
-                  </div>
-                  <div className="mt-3 h-3 rounded-full bg-slate-100/80 shadow-inner">
-                    <div className="h-3 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-700" style={{ width: `${pointsPct}%` }} />
-                  </div>
-                  <p className="mt-2 text-sm text-slate-500">
-                    {enrollment.points >= data.points_to_unlock
-                      ? 'You can unlock another domain.'
-                      : `Earn ${data.points_to_unlock - enrollment.points} more points to unlock another domain.`}
-                  </p>
-                </>
-              ) : null}
+              ) : (
+                <p className="mt-2 text-sm text-slate-500">
+                  {enrollment
+                    ? `Earn ${data.points_to_unlock - data.total_points} more points to unlock another domain.`
+                    : 'Start earning points by completing levels.'}
+                </p>
+              )}
               <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800">
                 🏅 Badges earned: {badgeCount}
               </p>
