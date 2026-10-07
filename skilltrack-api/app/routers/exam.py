@@ -141,16 +141,25 @@ def _pick_questions(db: Session, level: Level) -> list[Question]:
     by_difficulty: dict[str, list[Question]] = {"easy": [], "medium": [], "hard": []}
     for q in bank:
         by_difficulty.setdefault(q.difficulty, []).append(q)
-    targets = {
-        "easy": round(level.question_count * level.easy_pct / 100),
-        "medium": round(level.question_count * level.medium_pct / 100),
-        "hard": round(level.question_count * level.hard_pct / 100),
-    }
+
+    # Use integer division to avoid rounding errors, allocate remainder to hard questions
+    easy_count = int(level.question_count * level.easy_pct / 100)
+    medium_count = int(level.question_count * level.medium_pct / 100)
+    hard_count = level.question_count - easy_count - medium_count  # Ensures exact total
+
+    targets = {"easy": easy_count, "medium": medium_count, "hard": hard_count}
+
     chosen: list[Question] = []
     for difficulty, pool in by_difficulty.items():
-        chosen += random.sample(pool, min(len(pool), targets.get(difficulty, 0)))
+        target = targets.get(difficulty, 0)
+        if target > 0:
+            chosen += random.sample(pool, min(len(pool), target))
+
+    # If we still need more questions (due to insufficient questions in specific difficulties)
     leftover = [q for q in bank if q not in chosen]
-    chosen += random.sample(leftover, min(len(leftover), max(0, level.question_count - len(chosen))))
+    if len(chosen) < level.question_count and leftover:
+        chosen += random.sample(leftover, min(len(leftover), level.question_count - len(chosen)))
+
     random.shuffle(chosen)
     return chosen
 
@@ -158,10 +167,13 @@ def _pick_questions(db: Session, level: Level) -> list[Question]:
 def _session_out(db: Session, session: ExamSession, level: Level) -> dict:
     questions = {q.id: q for q in db.scalars(select(Question).where(Question.id.in_(session.question_ids)))}
     ids = [qid for qid in session.question_ids if qid in questions]
+    now = _now()
     return {
         "session_id": session.id,
         "level": {"id": level.id, "name": level.name, "pass_mark": level.pass_mark},
-        "seconds_left": max(0, int((_aware(session.ends_at) - _now()).total_seconds())),
+        "seconds_left": max(0, int((_aware(session.ends_at) - now).total_seconds())),
+        "server_time": now.isoformat(),  # Send server time for client sync
+        "ends_at": _aware(session.ends_at).isoformat(),
         "questions": [
             {"id": qid, "text": questions[qid].text, "options": questions[qid].options}
             for qid in ids
@@ -265,12 +277,49 @@ def start_exam(body: StartIn, db: Session = Depends(get_db), user: User = Depend
             ExamSession.user_id == user.id, ExamSession.level_id == level.id, ExamSession.submitted_at.is_(None),
         ).order_by(ExamSession.id.desc())
     )
-    if open_session and _aware(open_session.ends_at) > _now():
-        return _session_out(db, open_session, level)
+    if open_session:
+        now = _now()
+        if _aware(open_session.ends_at) > now:
+            # Session still valid, resume it
+            return _session_out(db, open_session, level)
+        else:
+            # Session expired without submission - auto-submit with zero score
+            open_session.submitted_at = now
+            open_session.violations = 0
+            # Get enrollment without eligibility check (session already started)
+            enr = db.scalar(
+                select(Enrollment).where(
+                    Enrollment.user_id == user.id, Enrollment.domain_id == level.domain_id, Enrollment.status == "active"
+                )
+            )
+            if enr:
+                outcome = record_attempt(db, user, level, enr, 0, None, None)
+                db.add(ActivityLog(
+                    user_id=user.id,
+                    action=f"{user.name}: Auto-submitted expired session for {level.name} (time ran out)"
+                ))
+                db.commit()
+                raise HTTPException(
+                    status.HTTP_410_GONE,
+                    f"Your previous exam session expired without submission and was recorded as a failed attempt. "
+                    f"You have used {outcome['attempt_no']} attempt(s)."
+                )
+            else:
+                # Enrollment no longer exists or is inactive
+                db.commit()
+                raise HTTPException(
+                    status.HTTP_410_GONE,
+                    "Your previous exam session expired. Please contact your administrator."
+                )
 
     questions = _pick_questions(db, level)
     if not questions:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No questions have been added for this level yet")
+    if len(questions) < level.question_count:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            f"Insufficient questions for this exam. Need {level.question_count}, but only {len(questions)} available. Contact your administrator."
+        )
     now = _now()
     session = ExamSession(
         user_id=user.id, level_id=level.id, key_id=key.id, question_ids=[q.id for q in questions],
@@ -280,6 +329,22 @@ def start_exam(body: StartIn, db: Session = Depends(get_db), user: User = Depend
     db.add(ActivityLog(user_id=user.id, action=f"{user.name} started {level.name}"))
     db.commit()
     return _session_out(db, session, level)
+
+
+@router.get("/sessions/{session_id}/time")
+def session_time(session_id: int, db: Session = Depends(get_db), user: User = Depends(student_only)):
+    """Return server time and remaining seconds for client sync during exam."""
+    session = db.get(ExamSession, session_id)
+    if session is None or session.user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    if session.submitted_at is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Exam already submitted")
+    now = _now()
+    return {
+        "server_time": now.isoformat(),
+        "ends_at": _aware(session.ends_at).isoformat(),
+        "seconds_left": max(0, int((_aware(session.ends_at) - now).total_seconds())),
+    }
 
 
 @router.post("/sessions/{session_id}/submit")

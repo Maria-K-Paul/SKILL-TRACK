@@ -55,7 +55,7 @@ def _out(db: Session, slot: Slot) -> dict:
 
 @router.get("/catalog")
 def catalog(db: Session = Depends(get_db), user: User = Depends(managers)):
-    query = select(Domain).where(Domain.is_common == False).order_by(Domain.id)
+    query = select(Domain).where(Domain.is_common.is_(False)).order_by(Domain.id)
     if user.role == "owner":
         query = query.where(Domain.owner_id == user.id)
     return [
@@ -75,19 +75,22 @@ def list_slots(domain_id: int, db: Session = Depends(get_db), user: User = Depen
 def create_slot(body: SlotIn, db: Session = Depends(get_db), user: User = Depends(managers)):
     domain = _manageable_domain(db, user, body.domain_id)
     _require_future(body.starts_at)
-    slot = Slot(domain_id=domain.id, starts_at=body.starts_at, venue=body.venue.strip(), capacity=body.capacity)
+    # Get level to associate with slot
+    level = db.get(Level, body.level_id) if hasattr(body, 'level_id') and body.level_id else None
+    if level is None:
+        # Default to first level of domain if not specified
+        level = db.scalar(select(Level).where(Level.domain_id == domain.id).order_by(Level.number).limit(1))
+    if level is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No levels found for this domain")
+
+    slot = Slot(domain_id=domain.id, level_id=level.id, starts_at=body.starts_at, venue=body.venue.strip(), capacity=body.capacity)
     db.add(slot)
-<<<<<<< HEAD
-    db.add(ActivityLog(user_id=user.id, action=f"{user.name} scheduled a slot for {domain.name} at {slot.venue}"))
-    db.commit()
-=======
     db.add(ActivityLog(user_id=user.id, action=f"{user.name} scheduled a slot for {level.name} at {slot.venue}"))
     try:
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, "This slot is already enrolled/created.")
->>>>>>> 5aa04c014e2d5ab57ff8b3316039ecad7816e36a
+        raise HTTPException(status.HTTP_409_CONFLICT, "A slot for this level at this time and venue already exists.")
     return _out(db, slot)
 
 

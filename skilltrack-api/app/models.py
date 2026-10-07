@@ -97,6 +97,7 @@ class Slot(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     domain_id: Mapped[int] = mapped_column(ForeignKey("domains.id"))
+    level_id: Mapped[int] = mapped_column(ForeignKey("levels.id"))
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     venue: Mapped[str] = mapped_column(String(120))
     capacity: Mapped[int] = mapped_column(Integer)

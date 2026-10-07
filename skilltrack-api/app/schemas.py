@@ -121,6 +121,7 @@ class SettingsIn(BaseModel):
 
 class SlotIn(BaseModel):
     domain_id: int
+    level_id: int | None = None  # Optional: defaults to first level of domain if not provided
     starts_at: AwareDatetime
     venue: str = Field(min_length=2, max_length=120)
     capacity: int = Field(ge=1, le=500)

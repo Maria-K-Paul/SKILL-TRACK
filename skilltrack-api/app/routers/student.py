@@ -364,7 +364,6 @@ def dashboard(user: User = Depends(student_only), db: Session = Depends(get_db))
         result["skill_gap"] = {"level_name": level.name, "weak": latest.skill_gaps}
 
     if active_level:
-<<<<<<< HEAD
         # Fetch student's booked slot in this domain (any level)
         booked = db.scalar(
             select(SlotBooking.slot_id).join(Slot, Slot.id == SlotBooking.slot_id)
@@ -372,26 +371,10 @@ def dashboard(user: User = Depends(student_only), db: Session = Depends(get_db))
         )
         result["booked_slot_id"] = booked
         # Fetch all upcoming slots for this domain (students can book any slot regardless of level)
+        # Use timezone-aware datetime for consistent comparison
+        now = datetime.now(timezone.utc)
         slots = db.scalars(
-            select(Slot).where(Slot.domain_id == domain.id, Slot.starts_at > datetime.now(timezone.utc))
-=======
-        # Find active booking for this level (non-cancelled)
-        active_booking = db.scalar(
-            select(SlotBooking).join(Slot, Slot.id == SlotBooking.slot_id)
-            .where(
-                SlotBooking.user_id == user.id,
-                Slot.level_id == active_level.id,
-                SlotBooking.status == "booked",
-            )
-        )
-        if active_booking:
-            booked_slot = db.get(Slot, active_booking.slot_id)
-            result["booked_slot_id"] = active_booking.slot_id
-            result["active_booking"] = _booking_out(active_booking, booked_slot, active_level)
-
-        slots = db.scalars(
-            select(Slot).where(Slot.level_id == active_level.id, Slot.starts_at > _now())
->>>>>>> 5aa04c014e2d5ab57ff8b3316039ecad7816e36a
+            select(Slot).where(Slot.domain_id == domain.id, Slot.starts_at > now)
             .order_by(Slot.starts_at)
         ).all()
         result["slots"] = [
@@ -483,15 +466,11 @@ def book_slot(slot_id: int, body: BookSlotIn, user: User = Depends(student_only)
     slot = db.get(Slot, slot_id, with_for_update=True)  # row-lock for capacity
     if slot is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Slot not found")
-<<<<<<< HEAD
 
-    # Check if student is enrolled in this domain
-    domain = db.get(Domain, slot.domain_id)
-=======
     level = db.get(Level, slot.level_id)
+    domain = db.get(Domain, slot.domain_id)
 
     # Enrollment + eligibility check
->>>>>>> 5aa04c014e2d5ab57ff8b3316039ecad7816e36a
     enr = db.scalar(select(Enrollment).where(
         Enrollment.user_id == user.id, Enrollment.domain_id == slot.domain_id, Enrollment.status == "active",
     ))
@@ -502,17 +481,6 @@ def book_slot(slot_id: int, body: BookSlotIn, user: User = Depends(student_only)
     if starts_at <= _now():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "This slot has already started")
 
-<<<<<<< HEAD
-    # One booking per domain: booking a new slot replaces the old one
-    old = db.scalars(
-        select(SlotBooking).join(Slot, Slot.id == SlotBooking.slot_id)
-        .where(SlotBooking.user_id == user.id, Slot.domain_id == slot.domain_id)
-    ).all()
-    for booking in old:
-        db.delete(booking)
-    db.add(SlotBooking(slot_id=slot.id, user_id=user.id))
-    db.add(ActivityLog(user_id=user.id, action=f"{user.name} booked a slot for {domain.name}"))
-=======
     # Block double-booking same domain+level
     existing_level_booking = db.scalar(
         select(SlotBooking).join(Slot, Slot.id == SlotBooking.slot_id)
