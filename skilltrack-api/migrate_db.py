@@ -109,6 +109,22 @@ def run_migration():
                     END
                 """))
 
+            # Create partial unique index: one active non-common enrollment per student
+            if not index_exists(conn, 'uq_one_active_domain_enrollment'):
+                if is_sqlite:
+                    conn.execute(text("""
+                        CREATE UNIQUE INDEX uq_one_active_domain_enrollment
+                        ON enrollments(user_id)
+                        WHERE status = 'active' AND is_common_enrollment = 0
+                    """))
+                else:
+                    conn.execute(text("""
+                        CREATE UNIQUE INDEX uq_one_active_domain_enrollment
+                        ON enrollments(user_id)
+                        WHERE status = 'active' AND is_common_enrollment = false
+                    """))
+                print("  ✓ Created partial unique index for one active domain per student")
+
         # ============================================================
         # 3. Slots: domain_id + UniqueConstraint
         # ============================================================
@@ -357,28 +373,6 @@ def run_migration():
                 else:
                     conn.execute(text("ALTER TABLE exam_keys ALTER COLUMN level_id DROP NOT NULL"))
                     print("  ✓ Made exam_keys.level_id optional")
-
-        # ============================================================
-        # 9. Enrollments: at most one active domain (non-common) enrollment per student.
-        #    The enroll endpoint relies on this index to turn simultaneous requests into a 409.
-        # ============================================================
-        if table_exists(inspector, 'enrollments') and not index_exists(conn, 'uq_one_active_domain_enrollment'):
-            not_common = "is_common_enrollment = 0" if is_sqlite else "is_common_enrollment = FALSE"
-            doubled = conn.execute(text(f"""
-                SELECT count(*) FROM (
-                    SELECT user_id FROM enrollments WHERE status = 'active' AND {not_common}
-                    GROUP BY user_id HAVING count(*) > 1
-                ) d
-            """)).scalar()
-            if doubled:
-                print(f"  ⚠️ {doubled} student(s) already have more than one active domain; "
-                      "skipped the one-active-domain index until that is resolved")
-            else:
-                conn.execute(text(f"""
-                    CREATE UNIQUE INDEX uq_one_active_domain_enrollment ON enrollments (user_id)
-                    WHERE status = 'active' AND {not_common}
-                """))
-                print("  ✓ Created index: one active domain per student")
 
     print("✅ Migration completed successfully!")
     return True

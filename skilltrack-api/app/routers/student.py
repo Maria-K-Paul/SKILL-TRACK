@@ -58,6 +58,17 @@ def _booking_out(booking: SlotBooking, slot: Slot, level: Level) -> dict:
     }
 
 
+def _build_active_enrollment(db: Session, active_enr, domain_id: int = None) -> dict:
+    """Safely build active enrollment dict with null-check for domain."""
+    if not active_enr:
+        return None
+    domain = db.get(Domain, active_enr.domain_id)
+    return {
+        "domain_id": active_enr.domain_id,
+        "domain_name": domain.name if domain else "Unknown Domain",
+    }
+
+
 # ── Domain discovery ──────────────────────────────────────────────────────────
 
 @router.get("/domains")
@@ -129,12 +140,17 @@ def list_domains(
     # First domain needs only the semester gate; subsequent domains also need the points threshold
     points_unlocked = (completed_domain_count == 0) or (total_points >= cfg["points_to_unlock"])
 
+    active_enrollment_data = None
+    if active_enr:
+        domain = db.get(Domain, active_enr.domain_id)
+        active_enrollment_data = {
+            "domain_id": active_enr.domain_id,
+            "domain_name": domain.name if domain else "Unknown Domain",
+        }
+
     return {
         "domains": result,
-        "active_enrollment": {
-            "domain_id": active_enr.domain_id,
-            "domain_name": db.get(Domain, active_enr.domain_id).name,
-        } if active_enr else None,
+        "active_enrollment": active_enrollment_data,
         "can_enroll": semester_of(user) >= DOMAIN_SELECTION_SEMESTER,
         "points_to_unlock": cfg["points_to_unlock"],
         "student_points": total_points,
@@ -225,10 +241,7 @@ def domain_detail(
         "total_duration_min": sum(lv.duration_min for lv in domain.levels),
         "levels": levels_out,
         "enrollment_status": enr.status if enr else None,
-        "active_enrollment": {
-            "domain_id": active_enr.domain_id,
-            "domain_name": db.get(Domain, active_enr.domain_id).name,
-        } if active_enr and active_enr.domain_id != domain_id else None,
+        "active_enrollment": _build_active_enrollment(db, active_enr, domain_id) if active_enr and active_enr.domain_id != domain_id else None,
         "can_enroll": semester_of(user) >= DOMAIN_SELECTION_SEMESTER,
         "points_to_unlock": cfg["points_to_unlock"],
         "student_points": total_points,
@@ -252,7 +265,8 @@ def dashboard(user: User = Depends(student_only), db: Session = Depends(get_db))
     ).all()
     certificates_out = []
     for c in certs:
-        d_name = c.domain_name or db.get(Domain, c.domain_id).name
+        domain = db.get(Domain, c.domain_id) if c.domain_id else None
+        d_name = c.domain_name or (domain.name if domain else "Unknown Domain")
         certificates_out.append({
             "code": c.code, "title": d_name,
             "issued_at": c.issued_at, "first_attempt": c.first_attempt,
