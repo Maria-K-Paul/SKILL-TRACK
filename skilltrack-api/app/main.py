@@ -53,9 +53,9 @@ def _complete_finished_enrollments() -> None:
                    (SELECT COUNT(*) FROM levels l WHERE l.domain_id = e.domain_id) AS total_levels,
                    (SELECT COUNT(DISTINCT a.level_id)
                     FROM attempts a JOIN levels l ON l.id = a.level_id
-                    WHERE a.user_id = e.user_id AND l.domain_id = e.domain_id AND a.passed = 1) AS passed_levels
+                    WHERE a.user_id = e.user_id AND l.domain_id = e.domain_id AND a.passed = TRUE) AS passed_levels
             FROM enrollments e
-            WHERE e.status = 'active' AND e.is_common_enrollment = 0
+            WHERE e.status = 'active' AND e.is_common_enrollment = FALSE
         """)).fetchall()
 
         now = datetime.now(timezone.utc)
