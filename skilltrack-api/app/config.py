@@ -21,7 +21,9 @@ for _prefix in ("postgres://", "postgresql://"):
     if DATABASE_URL.startswith(_prefix):
         DATABASE_URL = "postgresql+psycopg://" + DATABASE_URL[len(_prefix):]
 SECRET_KEY = os.environ.get("SECRET_KEY", "change-me")
-ACCESS_TOKEN_MINUTES = int(os.environ.get("ACCESS_TOKEN_MINUTES", "480"))
+ACCESS_TOKEN_MINUTES = int(os.environ.get("ACCESS_TOKEN_MINUTES", "15"))
+# A refresh token only gets new access tokens and is not renewed, so users sign in again once it runs out
+REFRESH_TOKEN_MINUTES = int(os.environ.get("REFRESH_TOKEN_MINUTES", "1440"))
 ALGORITHM = "HS256"
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "").strip() or "gemini-3.7-flash"
