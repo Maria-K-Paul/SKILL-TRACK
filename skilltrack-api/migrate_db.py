@@ -89,25 +89,25 @@ def run_migration():
                     conn.execute(text("ALTER TABLE enrollments ADD COLUMN is_common_enrollment BOOLEAN NOT NULL DEFAULT FALSE"))
                 print("  ✓ Added enrollments.is_common_enrollment")
 
-                # Backfill is_common_enrollment (use proper boolean syntax for PostgreSQL)
-                if is_sqlite:
-                    conn.execute(text("""
-                        UPDATE enrollments
-                        SET is_common_enrollment = CASE
-                            WHEN domain_id IN (SELECT id FROM domains WHERE is_common = 1) THEN 1
-                            ELSE 0
-                        END
-                    """))
-                else:
-                    # PostgreSQL requires TRUE/FALSE for boolean columns
-                    conn.execute(text("""
-                        UPDATE enrollments
-                        SET is_common_enrollment = CASE
-                            WHEN domain_id IN (SELECT id FROM domains WHERE is_common = TRUE) THEN TRUE
-                            ELSE FALSE
-                        END
-                    """))
-                print("  ✓ Backfilled is_common_enrollment")
+            # Backfill is_common_enrollment on every run, not only when the column is added: an older app
+            # version still running against this database creates enrollments without setting it
+            if is_sqlite:
+                conn.execute(text("""
+                    UPDATE enrollments
+                    SET is_common_enrollment = CASE
+                        WHEN domain_id IN (SELECT id FROM domains WHERE is_common = 1) THEN 1
+                        ELSE 0
+                    END
+                """))
+            else:
+                # PostgreSQL requires TRUE/FALSE for boolean columns
+                conn.execute(text("""
+                    UPDATE enrollments
+                    SET is_common_enrollment = CASE
+                        WHEN domain_id IN (SELECT id FROM domains WHERE is_common = TRUE) THEN TRUE
+                        ELSE FALSE
+                    END
+                """))
 
         # ============================================================
         # 3. Slots: domain_id + UniqueConstraint
@@ -122,13 +122,15 @@ def run_migration():
                     conn.execute(text("ALTER TABLE slots ADD COLUMN domain_id INTEGER REFERENCES domains(id)"))
                 print("  ✓ Added slots.domain_id")
 
-                # Backfill domain_id from level_id
-                conn.execute(text("""
-                    UPDATE slots
-                    SET domain_id = (SELECT domain_id FROM levels WHERE levels.id = slots.level_id)
-                    WHERE domain_id IS NULL
-                """))
-                print("  ✓ Backfilled slots.domain_id from levels")
+            # Backfill domain_id from level_id on every run: an older app version still running against this
+            # database creates slots without it
+            filled = conn.execute(text("""
+                UPDATE slots
+                SET domain_id = (SELECT domain_id FROM levels WHERE levels.id = slots.level_id)
+                WHERE domain_id IS NULL
+            """)).rowcount
+            if filled:
+                print(f"  ✓ Backfilled slots.domain_id from levels ({filled} slot(s))")
 
             # Remove duplicates before creating unique index
             if not index_exists(conn, 'idx_slots_level_time_venue'):
@@ -330,6 +332,53 @@ def run_migration():
                 else:
                     conn.execute(text("ALTER TABLE exam_keys ADD COLUMN slot_id INTEGER REFERENCES slots(id)"))
                 print("  ✓ Added exam_keys.slot_id")
+
+        # ============================================================
+        # 8. ExamKeys: domain_id, and level_id optional (slot-based keys)
+        #    Databases created before slot-based keys have no domain_id and require level_id,
+        #    so listing or issuing keys fails until these are changed.
+        # ============================================================
+        if table_exists(inspector, 'exam_keys'):
+            if not column_exists(inspector, 'exam_keys', 'domain_id'):
+                print("📋 Migrating exam_keys table (domain_id)...")
+                conn.execute(text("ALTER TABLE exam_keys ADD COLUMN domain_id INTEGER REFERENCES domains(id)"))
+                print("  ✓ Added exam_keys.domain_id")
+            # Existing keys get the domain of their slot, or else of their level
+            conn.execute(text("""
+                UPDATE exam_keys SET domain_id = COALESCE(
+                    (SELECT s.domain_id FROM slots s WHERE s.id = exam_keys.slot_id),
+                    (SELECT l.domain_id FROM levels l WHERE l.id = exam_keys.level_id))
+                WHERE domain_id IS NULL
+            """))
+            level_col = next((c for c in inspector.get_columns('exam_keys') if c['name'] == 'level_id'), None)
+            if level_col is not None and not level_col['nullable']:
+                if is_sqlite:
+                    print("  ⚠️ exam_keys.level_id is still required (SQLite cannot relax it in place); recreate the table to issue slot-only keys")
+                else:
+                    conn.execute(text("ALTER TABLE exam_keys ALTER COLUMN level_id DROP NOT NULL"))
+                    print("  ✓ Made exam_keys.level_id optional")
+
+        # ============================================================
+        # 9. Enrollments: at most one active domain (non-common) enrollment per student.
+        #    The enroll endpoint relies on this index to turn simultaneous requests into a 409.
+        # ============================================================
+        if table_exists(inspector, 'enrollments') and not index_exists(conn, 'uq_one_active_domain_enrollment'):
+            not_common = "is_common_enrollment = 0" if is_sqlite else "is_common_enrollment = FALSE"
+            doubled = conn.execute(text(f"""
+                SELECT count(*) FROM (
+                    SELECT user_id FROM enrollments WHERE status = 'active' AND {not_common}
+                    GROUP BY user_id HAVING count(*) > 1
+                ) d
+            """)).scalar()
+            if doubled:
+                print(f"  ⚠️ {doubled} student(s) already have more than one active domain; "
+                      "skipped the one-active-domain index until that is resolved")
+            else:
+                conn.execute(text(f"""
+                    CREATE UNIQUE INDEX uq_one_active_domain_enrollment ON enrollments (user_id)
+                    WHERE status = 'active' AND {not_common}
+                """))
+                print("  ✓ Created index: one active domain per student")
 
     print("✅ Migration completed successfully!")
     return True
