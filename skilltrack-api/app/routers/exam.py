@@ -42,6 +42,9 @@ def _slot_students(db: Session, slot_id: int) -> list[dict]:
 
 def _slot_out(db: Session, slot: Slot, with_students: bool = True) -> dict:
     domain = db.get(Domain, slot.domain_id)
+    if domain is None:
+        # Slot references a deleted domain - skip it gracefully
+        return None
     level = db.get(Level, slot.level_id)
     students = _slot_students(db, slot.id)
     return {
@@ -86,7 +89,8 @@ def keyable_slots(db: Session = Depends(get_db), _: User = Depends(staff)):
     # Get all slots and filter with timezone-aware comparison
     all_slots = db.scalars(select(Slot).order_by(Slot.starts_at)).all()
     slots = [s for s in all_slots if _aware(s.starts_at) >= since]
-    return [_slot_out(db, s) for s in slots]
+    # Filter out None (slots with deleted domains) and return
+    return [out for s in slots if (out := _slot_out(db, s)) is not None]
 
 
 @router.post("/keys", status_code=status.HTTP_201_CREATED)
