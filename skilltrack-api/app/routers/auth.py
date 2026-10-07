@@ -40,7 +40,6 @@ def register(body: RegisterIn, db: Session = Depends(get_db)):
 def login(body: LoginIn, db: Session = Depends(get_db)):
     email_key = body.email.lower()
     login_failures.raise_if_blocked(email_key)
-    print(f"Login attempt: '{body.email}' with pass '{body.password}'")
     user = db.scalar(select(User).where(User.email == body.email))
     if user is None or not user.is_active or not verify_password(body.password, user.password_hash):
         login_failures.hit(email_key)
