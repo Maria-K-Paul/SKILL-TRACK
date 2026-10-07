@@ -17,7 +17,7 @@ export function errorMessage(err: unknown, fallback = 'Something went wrong') {
     if (Array.isArray(detail) && detail.length > 0) {
       return detail.map((d: { loc?: unknown[]; msg?: string }) => `${String(d.loc?.at(-1) ?? 'Input')}: ${d.msg ?? 'invalid'}`).join('; ')
     }
-    if (!err.response) return 'Cannot reach the server. Is the API running?'
+    if (!err.response) return `Network Error: ${err.message}`
   }
   return fallback
 }

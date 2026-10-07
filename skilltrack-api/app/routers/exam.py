@@ -119,10 +119,17 @@ def issue_key(body: KeyIn, db: Session = Depends(get_db), user: User = Depends(s
         expires_at=_now() + timedelta(minutes=body.minutes or get_settings(db)["key_minutes"]),
     )
     db.add(key)
-    domain = db.get(Domain, domain_id)
-    where = f" ({slot.venue}, slot #{slot.id})" if slot else ""
-    db.add(ActivityLog(user_id=user.id, action=f"Exam key issued for {domain.name}{where}"))
-    db.commit()
+    try:
+        domain = db.get(Domain, domain_id)
+        where = f" ({slot.venue}, slot #{slot.id})" if slot else ""
+        db.add(ActivityLog(user_id=user.id, action=f"Exam key issued for {domain.name}{where}"))
+        db.commit()
+    except Exception:
+        db.rollback()
+        # If logging fails, we still want to issue the key
+        db.add(key)
+        db.commit()
+
     return _key_out(db, key)
 
 
