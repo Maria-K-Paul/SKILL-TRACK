@@ -63,16 +63,26 @@ export default function InvigilatorDashboard() {
     setKeys(res.data)
   }, [])
 
-  useEffect(() => {
-    api.get<SlotInfo[]>('/exam/slots')
-      .then((sl) => {
-        setSlots(sl.data)
-        setSlotId(sl.data[0]?.id ?? '')
-      })
-      .catch((err) => setError(errorMessage(err)))
+  const loadSlots = useCallback(async () => {
+    const res = await api.get<SlotInfo[]>('/exam/slots')
+    setSlots(res.data)
+    if (res.data.length > 0 && !slotId) {
+      setSlotId(res.data[0].id)
+    }
+  }, [slotId])
 
-    loadKeys().catch((err) => setError(errorMessage(err)))
-  }, [loadKeys])
+  const loadAll = useCallback(async () => {
+    try {
+      setError('')
+      await Promise.all([loadSlots(), loadKeys()])
+    } catch (err) {
+      setError(errorMessage(err))
+    }
+  }, [loadSlots, loadKeys])
+
+  useEffect(() => {
+    loadAll()
+  }, [loadAll])
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000)
@@ -92,7 +102,7 @@ export default function InvigilatorDashboard() {
     setError('')
     try {
       await api.post('/exam/keys', { slot_id: slotId, minutes })
-      await loadKeys()
+      await loadAll()
     } catch (err) {
       setError(errorMessage(err))
     } finally {
