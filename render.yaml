@@ -23,9 +23,13 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: CORS_ORIGINS
-        value: https://skilltrack-web.onrender.com
+        value: https://skilltrack.web.onrender.com,https://skilltrack-web.onrender.com
       - key: GEMINI_API_KEY
         sync: false
+      - key: FRONTEND_URL
+        value: https://skilltrack.web.onrender.com
+      - key: PUBLIC_BASE_URL
+        value: https://skilltrack.web.onrender.com
 
   - type: web
     name: skilltrack-web

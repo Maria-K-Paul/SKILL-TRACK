@@ -25,6 +25,7 @@ interface ExamKey {
   level_name: string
   domain_name: string
   expires_at: string
+  seconds_left: number
   slot: SlotInfo | null
 }
 
@@ -63,12 +64,14 @@ export default function InvigilatorDashboard() {
   }, [])
 
   useEffect(() => {
-    Promise.all([api.get<SlotInfo[]>('/exam/slots'), loadKeys()])
-      .then(([sl]) => {
+    api.get<SlotInfo[]>('/exam/slots')
+      .then((sl) => {
         setSlots(sl.data)
         setSlotId(sl.data[0]?.id ?? '')
       })
       .catch((err) => setError(errorMessage(err)))
+
+    loadKeys().catch((err) => setError(errorMessage(err)))
   }, [loadKeys])
 
   useEffect(() => {
