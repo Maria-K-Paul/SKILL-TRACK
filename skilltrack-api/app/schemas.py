@@ -115,7 +115,7 @@ class SettingsIn(BaseModel):
 
 
 class SlotIn(BaseModel):
-    level_id: int
+    domain_id: int
     starts_at: AwareDatetime
     venue: str = Field(min_length=2, max_length=120)
     capacity: int = Field(ge=1, le=500)

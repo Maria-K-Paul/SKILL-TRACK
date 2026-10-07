@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..deps import require_roles
-from ..models import ActivityLog, Domain, ExamKey, ExamSession, Level, Question, Slot, SlotBooking, User
+from ..models import ActivityLog, Domain, Enrollment, ExamKey, ExamSession, Level, Question, Slot, SlotBooking, User
 from ..ratelimit import exam_start
 from ..rules import check_eligible, get_settings, record_attempt
 from ..schemas import KeyIn, StartIn, SubmitIn
@@ -41,21 +41,23 @@ def _slot_students(db: Session, slot_id: int) -> list[dict]:
 
 
 def _slot_out(db: Session, slot: Slot, with_students: bool = True) -> dict:
-    level = db.get(Level, slot.level_id)
+    domain = db.get(Domain, slot.domain_id)
     students = _slot_students(db, slot.id)
     return {
-        "id": slot.id, "level_id": level.id, "level_name": level.name, "domain_name": level.domain.name,
+        "id": slot.id, "domain_id": domain.id, "domain_name": domain.name,
         "starts_at": _aware(slot.starts_at), "venue": slot.venue, "capacity": slot.capacity,
         "booked": len(students), "students": students if with_students else [],
     }
 
 
-def _key_out(db: Session, k: ExamKey, level: Level) -> dict:
+def _key_out(db: Session, k: ExamKey) -> dict:
     left = int((_aware(k.expires_at) - _now()).total_seconds())
     slot = db.get(Slot, k.slot_id) if k.slot_id else None
+    domain = db.get(Domain, k.domain_id)
+    level = db.get(Level, k.level_id) if k.level_id else None
     return {
-        "id": k.id, "code": k.code, "level_id": level.id, "level_name": level.name,
-        "domain_name": level.domain.name,
+        "id": k.id, "code": k.code, "domain_id": domain.id, "domain_name": domain.name,
+        "level_name": level.name if level else f"{domain.name} (any level)",
         "expires_at": _aware(k.expires_at), "seconds_left": max(0, left),
         "slot": _slot_out(db, slot) if slot else None,
     }
@@ -86,28 +88,42 @@ def keyable_slots(db: Session = Depends(get_db), _: User = Depends(staff)):
 @router.post("/keys", status_code=status.HTTP_201_CREATED)
 def issue_key(body: KeyIn, db: Session = Depends(get_db), user: User = Depends(staff)):
     slot = None
+    domain_id = None
+    level_id = None
+
     if body.slot_id is not None:
+        # Key for a specific slot - any level student in that domain can use it
         slot = db.get(Slot, body.slot_id)
         if slot is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Slot not found")
-    level = db.get(Level, slot.level_id if slot else body.level_id)
-    if level is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Level not found")
+        domain_id = slot.domain_id
+        level_id = None  # Will be determined from student's enrollment
+    else:
+        # Key for a specific level (legacy mode or manual override)
+        level = db.get(Level, body.level_id)
+        if level is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Level not found")
+        domain_id = level.domain_id
+        level_id = level.id
+
     for _ in range(20):
         code = f"SKL-{secrets.randbelow(9000) + 1000}"
         if db.scalar(select(ExamKey.id).where(ExamKey.code == code)) is None:
             break
     else:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Could not generate a key, try again")
+
     key = ExamKey(
-        code=code, level_id=level.id, slot_id=slot.id if slot else None, issued_by=user.id,
+        code=code, domain_id=domain_id, level_id=level_id,
+        slot_id=slot.id if slot else None, issued_by=user.id,
         expires_at=_now() + timedelta(minutes=body.minutes or get_settings(db)["key_minutes"]),
     )
     db.add(key)
+    domain = db.get(Domain, domain_id)
     where = f" ({slot.venue}, slot #{slot.id})" if slot else ""
-    db.add(ActivityLog(user_id=user.id, action=f"Exam key issued for {level.name}{where}"))
+    db.add(ActivityLog(user_id=user.id, action=f"Exam key issued for {domain.name}{where}"))
     db.commit()
-    return _key_out(db, key, level)
+    return _key_out(db, key)
 
 
 @router.get("/keys")
@@ -115,7 +131,7 @@ def recent_keys(db: Session = Depends(get_db), user: User = Depends(staff)):
     keys = db.scalars(
         select(ExamKey).where(ExamKey.issued_by == user.id).order_by(ExamKey.id.desc()).limit(10)
     ).all()
-    return [_key_out(db, k, db.get(Level, k.level_id)) for k in keys]
+    return [_key_out(db, k) for k in keys]
 
 
 # ---------- Student ----------
@@ -166,11 +182,11 @@ def _check_slot_time(db: Session, user: User, key: ExamKey) -> None:
         if _aware(slot.starts_at) > now:
             raise HTTPException(status.HTTP_403_FORBIDDEN, _wait_text(_aware(slot.starts_at)))
         return
-    # Key not tied to a slot: if the student has booked a slot for this level, hold them to its start time
+    # Key not tied to a slot: if the student has booked a slot for this domain, hold them to its start time
     starts = sorted(
         _aware(t) for t in db.scalars(
             select(Slot.starts_at).join(SlotBooking, SlotBooking.slot_id == Slot.id)
-            .where(SlotBooking.user_id == user.id, Slot.level_id == key.level_id)
+            .where(SlotBooking.user_id == user.id, Slot.domain_id == key.domain_id)
         )
     )
     if starts and not any(now - timedelta(hours=6) <= t <= now for t in starts):
@@ -181,7 +197,7 @@ def _check_slot_time(db: Session, user: User, key: ExamKey) -> None:
 
 @router.get("/my-slot")
 def my_slot(db: Session = Depends(get_db), user: User = Depends(student_only)):
-    """The student's next booked slot (or one that started within the last 6 hours), with the time left until it opens."""
+    """The student's next booked slot (or one that started within the last 6 hours), with their level info."""
     since = _now() - timedelta(hours=6)
     slot = db.scalar(
         select(Slot).join(SlotBooking, SlotBooking.slot_id == Slot.id)
@@ -190,10 +206,19 @@ def my_slot(db: Session = Depends(get_db), user: User = Depends(student_only)):
     )
     if slot is None:
         return None
-    level = db.get(Level, slot.level_id)
+    domain = db.get(Domain, slot.domain_id)
+    # Get student's current level in this domain
+    enrollment = db.scalar(
+        select(Enrollment).where(Enrollment.user_id == user.id, Enrollment.domain_id == slot.domain_id)
+    )
+    level_number = enrollment.current_level if enrollment else 1
+    level = db.scalar(
+        select(Level).where(Level.domain_id == slot.domain_id, Level.number == level_number)
+    )
     return {
         "id": slot.id, "starts_at": _aware(slot.starts_at), "venue": slot.venue,
-        "level_name": level.name, "domain_name": level.domain.name,
+        "level_name": level.name if level else f"Level {level_number}",
+        "domain_name": domain.name,
         "seconds_until_start": max(0, int((_aware(slot.starts_at) - _now()).total_seconds())),
     }
 
@@ -209,12 +234,29 @@ def start_exam(body: StartIn, db: Session = Depends(get_db), user: User = Depend
     if _aware(key.expires_at) <= _now():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "This key has expired. Ask the invigilator for a new key.")
 
-    level = db.get(Level, key.level_id)
+    # Check if student booked the slot (if key is tied to a slot)
     if key.slot_id is not None and db.scalar(
         select(SlotBooking.id).where(SlotBooking.slot_id == key.slot_id, SlotBooking.user_id == user.id)
     ) is None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "This key is for a different slot. Check that you are using the key for the slot you booked.")
     _check_slot_time(db, user, key)
+
+    # Get student's enrollment to determine their level in this domain
+    enrollment = db.scalar(
+        select(Enrollment).where(Enrollment.user_id == user.id, Enrollment.domain_id == key.domain_id)
+    )
+    if enrollment is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"You are not enrolled in this domain. Please enroll first.")
+    if enrollment.status != "active":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"Your enrollment in this domain is {enrollment.status}.")
+
+    # Get the level for this student based on their enrollment
+    level = db.scalar(
+        select(Level).where(Level.domain_id == key.domain_id, Level.number == enrollment.current_level)
+    )
+    if level is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Level {enrollment.current_level} not found in this domain.")
+
     check_eligible(db, user, level)
 
     # Resume an unfinished session (e.g. after a refresh or a network drop)

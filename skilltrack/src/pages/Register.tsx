@@ -6,8 +6,7 @@ import AuthLayout, { Icon, Logo } from '../components/AuthLayout'
 import { authButton, authField } from '../components/authStyles'
 import { HOME, useAuth } from '../context/AuthContext'
 
-const DEPARTMENTS = ['CSE', 'IT', 'ECE', 'EEE', 'MECH', 'AIML', 'AIDS','CYBERSECURITY','CHEMICAL','CIVIL','BIOTECHNOLOGY'
-]
+const DEPARTMENTS = ['CSE', 'IT', 'ECE', 'EEE', 'MECH', 'AIML', 'AIDS', 'CYBERSECURITY', 'CHEMICAL', 'CIVIL', 'BIOTECHNOLOGY']
 
 const ICONS = {
   user: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM4 21a8 8 0 0116 0',

@@ -213,7 +213,7 @@ export default function StudentDashboard() {
       <Card title="Semester progress" icon={ico('cap')}>
         <div className="relative">
           <div className="absolute top-5 h-1.5 rounded-full bg-slate-100/80 shadow-inner" style={{ left: edge, right: edge }}>
-            <div className="h-full rounded-full bg-linear-to-r from-indigo-500 to-purple-500 shadow-md transition-all duration-700" style={{ width: `${semPct}%` }} />
+            <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 shadow-md transition-all duration-700" style={{ width: `${semPct}%` }} />
           </div>
           <ol className="relative grid" style={{ gridTemplateColumns: `repeat(${semesters.length}, minmax(0, 1fr))` }}>
             {semesters.map((s) => {
@@ -248,7 +248,7 @@ export default function StudentDashboard() {
                   <span>{r.domain}</span><span className="text-indigo-600">{r.match}% match</span>
                 </div>
                 <div className="mt-2 h-2 rounded-full bg-slate-100/80 shadow-inner">
-                  <div className="h-2 rounded-full bg-linear-to-r from-indigo-500 to-purple-500 transition-all duration-700" style={{ width: `${r.match}%` }} />
+                  <div className="h-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-700" style={{ width: `${r.match}%` }} />
                 </div>
                 <p className="mt-2 text-xs text-slate-500">{r.reason}</p>
               </li>
@@ -296,7 +296,7 @@ export default function StudentDashboard() {
                     {enrollment.points} <span className="text-base font-normal text-slate-500">/ {data.points_to_unlock} pts</span>
                   </div>
                   <div className="mt-3 h-3 rounded-full bg-slate-100/80 shadow-inner">
-                    <div className="h-3 rounded-full bg-linear-to-r from-indigo-500 to-purple-500 transition-all duration-700" style={{ width: `${pointsPct}%` }} />
+                    <div className="h-3 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-700" style={{ width: `${pointsPct}%` }} />
                   </div>
                   <p className="mt-2 text-sm text-slate-500">
                     {enrollment.points >= data.points_to_unlock
@@ -369,7 +369,6 @@ export default function StudentDashboard() {
                 </div>
               </div>
             )}
-            <button className={`${primaryBtn} mt-4`}>Take a mock test (from home)</button>
           </Card>
 
           <Card title="Book your test slot" icon={ico('calendar')}>

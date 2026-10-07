@@ -83,7 +83,7 @@ class Slot(Base):
     __tablename__ = "slots"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    level_id: Mapped[int] = mapped_column(ForeignKey("levels.id"))
+    domain_id: Mapped[int] = mapped_column(ForeignKey("domains.id"))
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     venue: Mapped[str] = mapped_column(String(120))
     capacity: Mapped[int] = mapped_column(Integer)
@@ -137,7 +137,9 @@ class ExamKey(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     code: Mapped[str] = mapped_column(String(20), unique=True, index=True)
-    level_id: Mapped[int] = mapped_column(ForeignKey("levels.id"))
+    domain_id: Mapped[int] = mapped_column(ForeignKey("domains.id"))
+    # level_id is optional - used only for keys generated without a slot (by specific level)
+    level_id: Mapped[int | None] = mapped_column(ForeignKey("levels.id"))
     issued_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     # When set, only students who booked this slot can use the key
     slot_id: Mapped[int | None] = mapped_column(ForeignKey("slots.id"))

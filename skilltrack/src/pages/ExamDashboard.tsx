@@ -343,7 +343,7 @@ export default function ExamDashboard() {
                 ))}
               </div>
               {error && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>}
-              <button disabled={busy} onClick={submit} className="group inline-flex items-center justify-center gap-2 mt-4 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:-translate-y-0.5 hover:bg-indigo-500 hover:shadow-indigo-500/40 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none">
+              <button disabled={busy} onClick={submit} className="mt-4 w-full group inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:-translate-y-0.5 hover:bg-indigo-500 hover:shadow-indigo-500/40 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none">
                 {busy ? 'Submitting…' : 'Submit answers'}
               </button>
             </div>
@@ -351,7 +351,7 @@ export default function ExamDashboard() {
         </div>
 
         {warning && (
-          <div role="alertdialog" aria-modal="true" className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/85 p-4 backdrop-blur-sm">
+          <div role="alertdialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/85 p-4 backdrop-blur-sm">
             <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl">
               <span className="mx-auto flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-red-100 text-red-600">{ico('alert', 'h-8 w-8')}</span>
               <h2 className="mt-4 text-2xl font-bold text-slate-900">Warning {Math.min(violations, MAX_VIOLATIONS)} of {MAX_VIOLATIONS}</h2>
