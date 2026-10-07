@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from ..database import get_db
 from ..deps import require_roles
@@ -76,8 +77,17 @@ def create_slot(body: SlotIn, db: Session = Depends(get_db), user: User = Depend
     _require_future(body.starts_at)
     slot = Slot(domain_id=domain.id, starts_at=body.starts_at, venue=body.venue.strip(), capacity=body.capacity)
     db.add(slot)
+<<<<<<< HEAD
     db.add(ActivityLog(user_id=user.id, action=f"{user.name} scheduled a slot for {domain.name} at {slot.venue}"))
     db.commit()
+=======
+    db.add(ActivityLog(user_id=user.id, action=f"{user.name} scheduled a slot for {level.name} at {slot.venue}"))
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "This slot is already enrolled/created.")
+>>>>>>> 5aa04c014e2d5ab57ff8b3316039ecad7816e36a
     return _out(db, slot)
 
 
@@ -94,7 +104,11 @@ def update_slot(slot_id: int, body: SlotPatch, db: Session = Depends(get_db), us
     for field, value in changes.items():
         if value is not None:
             setattr(slot, field, value.strip() if isinstance(value, str) else value)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "This slot is already enrolled/created.")
     return _out(db, slot)
 
 

@@ -6,6 +6,7 @@ import Card from '../components/Card'
 import { Icon, Logo } from '../components/AuthLayout'
 import { authField } from '../components/authStyles'
 import { useAuth } from '../context/AuthContext'
+import { useFetch } from '../useFetch'
 
 type Stage = 'details' | 'key' | 'test' | 'done'
 
@@ -121,9 +122,15 @@ function ScoreRing({ score, passed }: { score: number; passed: boolean }) {
   )
 }
 
+interface ActiveDomainCheck {
+  active_enrollment: { domain_id: number; domain_name: string } | null
+  can_enroll: boolean
+}
+
 export default function ExamDashboard() {
   const { user } = useAuth()
   const [stage, setStage] = useState<Stage>('details')
+  const domainCheck = useFetch<ActiveDomainCheck>('/domains?check_only=1')
   const [details, setDetails] = useState({ name: user?.name ?? '', regNo: user?.reg_no ?? '' })
   const [keyInput, setKeyInput] = useState('')
   const [error, setError] = useState('')
@@ -265,7 +272,7 @@ export default function ExamDashboard() {
     const lowTime = secondsLeft < 60
     return (
       <div
-        className="fixed inset-0 z-50 select-none overflow-y-auto bg-slate-50"
+        className="fixed inset-0 z-50 select-none overflow-y-auto bg-slate-50 dark:bg-slate-950"
         onCopy={(e) => e.preventDefault()}
         onPaste={(e) => e.preventDefault()}
         onCut={(e) => e.preventDefault()}
@@ -296,15 +303,15 @@ export default function ExamDashboard() {
         <div className={`mx-auto grid max-w-6xl gap-6 px-4 py-6 lg:grid-cols-[1fr_16rem] ${warning ? 'pointer-events-none blur-md' : ''}`}>
           <div className="space-y-5">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">{session.level.name}</h1>
-              <p className="text-sm text-slate-500">Pass mark {session.level.pass_mark}% · {total} questions</p>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{session.level.name}</h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Pass mark {session.level.pass_mark}% · {total} questions</p>
             </div>
 
             {session.questions.map((q, i) => (
-              <section key={q.id} id={`q-${q.id}`} className="scroll-mt-28 rounded-2xl border border-slate-100 bg-white p-5 shadow-lg shadow-indigo-100/40">
+              <section key={q.id} id={`q-${q.id}`} className="scroll-mt-28 rounded-2xl border border-slate-100 bg-white p-5 shadow-lg shadow-indigo-100/40 dark:border-slate-700 dark:bg-slate-900 dark:shadow-slate-950/40">
                 <div className="mb-4 flex items-start gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-sm font-bold text-indigo-600">{i + 1}</span>
-                  <p className="pt-1 text-sm font-semibold text-slate-800">{q.text}</p>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-sm font-bold text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400">{i + 1}</span>
+                  <p className="pt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">{q.text}</p>
                 </div>
                 <div className="space-y-2">
                   {q.options.map((opt, idx) => {
@@ -312,9 +319,9 @@ export default function ExamDashboard() {
                     return (
                       <label
                         key={opt}
-                        className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition ${picked ? 'border-indigo-500 bg-indigo-50 font-medium text-indigo-900 ring-4 ring-indigo-100' : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'}`}
+                        className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition ${picked ? 'border-indigo-500 bg-indigo-50 font-medium text-indigo-900 ring-4 ring-indigo-100 dark:border-indigo-500 dark:bg-indigo-900/30 dark:text-indigo-200 dark:ring-indigo-900/60' : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:border-indigo-600 dark:hover:bg-slate-800'}`}
                       >
-                        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${picked ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-300'}`}>
+                        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${picked ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-300 dark:border-slate-600'}`}>
                           {picked && ico('check', 'h-3 w-3')}
                         </span>
                         <input className="sr-only" type="radio" name={`q${q.id}`} checked={picked} onChange={() => setAnswers({ ...answers, [q.id]: idx })} />
@@ -328,15 +335,15 @@ export default function ExamDashboard() {
           </div>
 
           <aside className="lg:sticky lg:top-24 lg:self-start">
-            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-lg shadow-indigo-100/40">
-              <p className="text-sm font-semibold text-slate-800">Question palette</p>
-              <p className="mb-3 text-xs text-slate-500">{answered} of {total} answered</p>
+            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-lg shadow-indigo-100/40 dark:border-slate-700 dark:bg-slate-900 dark:shadow-slate-950/40">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Question palette</p>
+              <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">{answered} of {total} answered</p>
               <div className="grid grid-cols-5 gap-2">
                 {session.questions.map((q, i) => (
                   <button
                     key={q.id} type="button"
                     onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                    className={`h-9 rounded-lg text-xs font-bold transition hover:-translate-y-0.5 ${answers[q.id] !== undefined ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                    className={`h-9 rounded-lg text-xs font-bold transition hover:-translate-y-0.5 ${answers[q.id] !== undefined ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-400 dark:hover:bg-slate-600'}`}
                   >
                     {i + 1}
                   </button>
@@ -372,8 +379,22 @@ export default function ExamDashboard() {
   }
 
   /* ---------- Pre-exam and result screens ---------- */
+
+  // Active-domain check for the pre-exam screens only
+  const hasActiveDomain = domainCheck.data?.active_enrollment != null
+  const noActiveDomain = !domainCheck.loading && domainCheck.data != null && !hasActiveDomain && stage !== 'done'
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
+      {noActiveDomain && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
+          <p className="font-semibold text-base">No active domain</p>
+          <p className="mt-1">You must be enrolled in a domain to take the examination.</p>
+          <Link to="/student/domains" className="mt-3 inline-flex items-center gap-1 rounded-lg bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600">
+            Enroll in a Domain →
+          </Link>
+        </div>
+      )}
       <section className="relative overflow-hidden rounded-3xl bg-slate-950 p-6 text-white shadow-2xl sm:p-10">
         <div className="pointer-events-none absolute -right-20 -top-20 h-96 w-96 rounded-full bg-indigo-600/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 left-1/4 h-96 w-96 rounded-full bg-purple-600/20 blur-3xl" />
