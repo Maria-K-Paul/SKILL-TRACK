@@ -81,7 +81,9 @@ def catalog(db: Session = Depends(get_db), _: User = Depends(staff)):
 def keyable_slots(db: Session = Depends(get_db), _: User = Depends(staff)):
     """Slots a key can be issued for: anything starting from 6 hours ago onwards, with the students who booked it."""
     since = _now() - timedelta(hours=6)
-    slots = db.scalars(select(Slot).where(Slot.starts_at >= since).order_by(Slot.starts_at)).all()
+    # Get all slots and filter with timezone-aware comparison
+    all_slots = db.scalars(select(Slot).order_by(Slot.starts_at)).all()
+    slots = [s for s in all_slots if _aware(s.starts_at) >= since]
     return [_slot_out(db, s) for s in slots]
 
 

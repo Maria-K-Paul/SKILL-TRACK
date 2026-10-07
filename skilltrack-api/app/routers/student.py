@@ -367,22 +367,24 @@ def dashboard(user: User = Depends(student_only), db: Session = Depends(get_db))
         # Fetch student's booked slot in this domain (any level)
         booked = db.scalar(
             select(SlotBooking.slot_id).join(Slot, Slot.id == SlotBooking.slot_id)
-            .where(SlotBooking.user_id == user.id, Slot.domain_id == domain.id)
+            .where(SlotBooking.user_id == user.id, Slot.domain_id == domain.id, SlotBooking.status == "booked")
         )
         result["booked_slot_id"] = booked
         # Fetch all upcoming slots for this domain (students can book any slot regardless of level)
         # Use timezone-aware datetime for consistent comparison
         now = datetime.now(timezone.utc)
         slots = db.scalars(
-            select(Slot).where(Slot.domain_id == domain.id, Slot.starts_at > now)
+            select(Slot).where(Slot.domain_id == domain.id)
             .order_by(Slot.starts_at)
         ).all()
+        # Filter to only future slots, ensuring timezone-aware comparison
         result["slots"] = [
             {
                 "id": s.id, "starts_at": s.starts_at, "venue": s.venue,
                 "seats_left": max(0, s.capacity - _seats_taken(db, s.id)),
             }
             for s in slots
+            if _as_utc(s.starts_at) > now
         ]
     return result
 
