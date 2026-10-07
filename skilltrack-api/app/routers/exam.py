@@ -60,9 +60,12 @@ def _key_out(db: Session, k: ExamKey) -> dict:
     left = int((_aware(k.expires_at) - _now()).total_seconds())
     slot = db.get(Slot, k.slot_id) if k.slot_id else None
     domain = db.get(Domain, k.domain_id)
+    # Handle deleted domain gracefully
+    domain_id = domain.id if domain else k.domain_id
+    domain_name = domain.name if domain else "Unknown Domain"
     return {
-        "id": k.id, "code": k.code, "domain_id": domain.id, "domain_name": domain.name,
-        "level_name": domain.name,  # Frontend compatibility - shows domain name
+        "id": k.id, "code": k.code, "domain_id": domain_id, "domain_name": domain_name,
+        "level_name": domain_name,  # Frontend compatibility - shows domain name
         "expires_at": _aware(k.expires_at), "seconds_left": max(0, left),
         "slot": _slot_out(db, slot) if slot else None,
     }
@@ -119,10 +122,18 @@ def issue_key(body: KeyIn, db: Session = Depends(get_db), user: User = Depends(s
         expires_at=_now() + timedelta(minutes=body.minutes or get_settings(db)["key_minutes"]),
     )
     db.add(key)
-    domain = db.get(Domain, domain_id)
-    where = f" ({slot.venue}, slot #{slot.id})" if slot else ""
-    db.add(ActivityLog(user_id=user.id, action=f"Exam key issued for {domain.name}{where}"))
-    db.commit()
+    try:
+        domain = db.get(Domain, domain_id)
+        domain_name = domain.name if domain else "Unknown Domain"
+        where = f" ({slot.venue}, slot #{slot.id})" if slot else ""
+        db.add(ActivityLog(user_id=user.id, action=f"Exam key issued for {domain_name}{where}"))
+        db.commit()
+    except Exception:
+        db.rollback()
+        # If logging fails, we still want to issue the key
+        db.add(key)
+        db.commit()
+
     return _key_out(db, key)
 
 
@@ -228,6 +239,9 @@ def my_slot(db: Session = Depends(get_db), user: User = Depends(student_only)):
     if slot is None:
         return None
     domain = db.get(Domain, slot.domain_id)
+    # Handle deleted domain gracefully
+    if domain is None:
+        return None
     # Get student's current level in this domain
     enrollment = db.scalar(
         select(Enrollment).where(Enrollment.user_id == user.id, Enrollment.domain_id == slot.domain_id)

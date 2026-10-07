@@ -21,19 +21,19 @@ def _run_migrations() -> None:
         from pathlib import Path
         migrate_path = Path(__file__).parent.parent / "migrate_db.py"
         if migrate_path.exists():
-            print("🔄 Running database migrations on startup...")
+            print("Running database migrations on startup...")
             import importlib.util
             spec = importlib.util.spec_from_file_location("migrate_db", migrate_path)
             if spec is None or spec.loader is None:
-                print("⚠️ Could not load migration spec, skipping migrations")
+                print("Could not load migration spec, skipping migrations")
                 return
             migrate_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(migrate_module)
             migrate_module.run_migration()
         else:
-            print("⚠️ Migration script not found, skipping migrations")
+            print("Migration script not found, skipping migrations")
     except Exception as e:
-        print(f"⚠️ Migration warning: {e}")
+        print(f"Migration warning: {e}")
         # Don't fail startup if migrations fail - app might still work
 
 
