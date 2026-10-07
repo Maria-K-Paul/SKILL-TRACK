@@ -34,7 +34,7 @@ def _slot_students(db: Session, slot_id: int) -> list[dict]:
     rows = db.execute(
         select(User.id, User.name, User.reg_no)
         .join(SlotBooking, SlotBooking.user_id == User.id)
-        .where(SlotBooking.slot_id == slot_id)
+        .where(SlotBooking.slot_id == slot_id, SlotBooking.status == "booked")
         .order_by(User.name)
     ).all()
     return [{"id": r.id, "name": r.name, "reg_no": r.reg_no} for r in rows]
@@ -42,9 +42,12 @@ def _slot_students(db: Session, slot_id: int) -> list[dict]:
 
 def _slot_out(db: Session, slot: Slot, with_students: bool = True) -> dict:
     domain = db.get(Domain, slot.domain_id)
+    level = db.get(Level, slot.level_id)
     students = _slot_students(db, slot.id)
     return {
         "id": slot.id, "domain_id": domain.id, "domain_name": domain.name,
+        "level_id": level.id if level else None,
+        "level_name": level.name if level else "Unknown Level",
         "starts_at": _aware(slot.starts_at), "venue": slot.venue, "capacity": slot.capacity,
         "booked": len(students), "students": students if with_students else [],
     }
@@ -130,9 +133,18 @@ def issue_key(body: KeyIn, db: Session = Depends(get_db), user: User = Depends(s
 
 @router.get("/keys")
 def recent_keys(db: Session = Depends(get_db), user: User = Depends(staff)):
-    keys = db.scalars(
-        select(ExamKey).where(ExamKey.issued_by == user.id).order_by(ExamKey.id.desc()).limit(10)
-    ).all()
+    # Show all recent keys to all staff for better coordination
+    # Admins see all keys, invigilators see keys from last 24 hours
+    if user.role == "admin":
+        keys = db.scalars(
+            select(ExamKey).order_by(ExamKey.id.desc()).limit(20)
+        ).all()
+    else:
+        # Invigilators see recent keys (last 24 hours) from all staff
+        since = _now() - timedelta(hours=24)
+        keys = db.scalars(
+            select(ExamKey).where(ExamKey.created_at >= since).order_by(ExamKey.id.desc()).limit(15)
+        ).all()
     return [_key_out(db, k) for k in keys]
 
 
