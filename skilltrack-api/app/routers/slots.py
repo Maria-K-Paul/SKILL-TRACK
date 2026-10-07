@@ -76,7 +76,7 @@ def create_slot(body: SlotIn, db: Session = Depends(get_db), user: User = Depend
     domain = _manageable_domain(db, user, body.domain_id)
     _require_future(body.starts_at)
     # Get level to associate with slot
-    level = db.get(Level, body.level_id) if hasattr(body, 'level_id') and body.level_id else None
+    level = db.get(Level, body.level_id) if body.level_id else None
     if level is None:
         # Default to first level of domain if not specified
         level = db.scalar(select(Level).where(Level.domain_id == domain.id).order_by(Level.number).limit(1))

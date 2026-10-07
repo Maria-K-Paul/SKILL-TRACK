@@ -40,7 +40,7 @@ def _slot_students(db: Session, slot_id: int) -> list[dict]:
     return [{"id": r.id, "name": r.name, "reg_no": r.reg_no} for r in rows]
 
 
-def _slot_out(db: Session, slot: Slot, with_students: bool = True) -> dict:
+def _slot_out(db: Session, slot: Slot, with_students: bool = True) -> dict | None:
     domain = db.get(Domain, slot.domain_id)
     if domain is None:
         # Slot references a deleted domain - skip it gracefully

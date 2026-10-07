@@ -46,7 +46,7 @@ def run_noshow_job() -> int:
             slot = db.get(Slot, booking.slot_id)
             level = db.get(Level, slot.level_id)
             user = db.get(User, booking.user_id)
-            if user is None:
+            if user is None or level is None:
                 continue
 
             slot_start = _aware(slot.starts_at)
