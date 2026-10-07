@@ -130,8 +130,33 @@ def run_migration():
                 """))
                 print("  ✓ Backfilled slots.domain_id from levels")
 
-            # Add unique constraint if not exists
+            # Remove duplicates before creating unique index
             if not index_exists(conn, 'idx_slots_level_time_venue'):
+                # Find and keep only the first occurrence of each duplicate
+                if is_sqlite:
+                    conn.execute(text("""
+                        DELETE FROM slots
+                        WHERE rowid NOT IN (
+                            SELECT MIN(rowid)
+                            FROM slots
+                            GROUP BY level_id, starts_at, venue
+                        )
+                    """))
+                else:
+                    # PostgreSQL: use ctid instead of rowid
+                    conn.execute(text("""
+                        DELETE FROM slots
+                        WHERE ctid NOT IN (
+                            SELECT MIN(ctid)
+                            FROM slots
+                            GROUP BY level_id, starts_at, venue
+                        )
+                    """))
+
+                duplicates_removed = conn.execute(text("SELECT COUNT(*) FROM slots")).scalar()
+                print(f"  ✓ Removed duplicate slots (keeping first occurrence)")
+
+                # Now create the unique index
                 conn.execute(text(
                     "CREATE UNIQUE INDEX idx_slots_level_time_venue ON slots (level_id, starts_at, venue)"
                 ))
