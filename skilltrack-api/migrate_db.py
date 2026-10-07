@@ -109,6 +109,22 @@ def run_migration():
                     """))
                 print("  ✓ Backfilled is_common_enrollment")
 
+            # Create partial unique index: one active non-common enrollment per student
+            if not index_exists(conn, 'uq_one_active_domain_enrollment'):
+                if is_sqlite:
+                    conn.execute(text("""
+                        CREATE UNIQUE INDEX uq_one_active_domain_enrollment
+                        ON enrollments(user_id)
+                        WHERE status = 'active' AND is_common_enrollment = 0
+                    """))
+                else:
+                    conn.execute(text("""
+                        CREATE UNIQUE INDEX uq_one_active_domain_enrollment
+                        ON enrollments(user_id)
+                        WHERE status = 'active' AND is_common_enrollment = false
+                    """))
+                print("  ✓ Created partial unique index for one active domain per student")
+
         # ============================================================
         # 3. Slots: domain_id + UniqueConstraint
         # ============================================================
