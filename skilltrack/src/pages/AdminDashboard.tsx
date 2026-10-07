@@ -4,6 +4,7 @@ import {
   Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import { api, errorMessage } from '../api'
+import { useAuth } from '../context/AuthContext'
 import Card from '../components/Card'
 import { Icon } from '../components/AuthLayout'
 import QuestionBank from '../components/QuestionBank'
@@ -95,7 +96,7 @@ const initial = (name: string) => name.trim().charAt(0).toUpperCase()
 
 function Avatar({ name }: { name: string }) {
   return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-indigo-500 to-fuchsia-500 text-xs font-bold text-white">
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-xs font-bold text-indigo-700 ring-1 ring-inset ring-indigo-600/20">
       {initial(name)}
     </span>
   )
@@ -132,6 +133,7 @@ function Filter({ label, value, onChange, options }: {
 }
 
 function ManageUsers() {
+  const { user: currentUser } = useAuth()
   const [staff, setStaff] = useState<StaffRow[]>([])
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'invigilator' })
   const [error, setError] = useState('')
@@ -177,12 +179,16 @@ function ManageUsers() {
             </div>
             <div className="flex shrink-0 items-center gap-3">
               <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${ROLE_STYLE[u.role] ?? 'bg-slate-100 text-slate-600'}`}>{u.role}</span>
-              <button
-                onClick={() => toggle(u)}
-                className={`rounded-lg border px-3 py-1 text-xs font-semibold transition ${u.is_active ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
-              >
-                {u.is_active ? 'Deactivate' : 'Activate'}
-              </button>
+              {u.id === currentUser?.id ? (
+                <span className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-400" title="You cannot deactivate your own account">You</span>
+              ) : (
+                <button
+                  onClick={() => toggle(u)}
+                  className={`rounded-lg border px-3 py-1 text-xs font-semibold transition ${u.is_active ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
+                >
+                  {u.is_active ? 'Deactivate' : 'Activate'}
+                </button>
+              )}
             </div>
           </li>
         ))}
@@ -559,13 +565,13 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-blue-500 via-violet-500 to-fuchsia-400 p-6 text-white shadow-xl shadow-indigo-200 sm:p-8">
-        <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/15" />
-        <div className="pointer-events-none absolute -bottom-14 left-1/3 h-36 w-36 rounded-full bg-pink-300/30" />
+      <section className="relative overflow-hidden rounded-3xl bg-slate-950 p-6 text-white shadow-2xl sm:p-10">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-96 w-96 rounded-full bg-indigo-600/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 left-1/4 h-96 w-96 rounded-full bg-purple-600/20 blur-3xl" />
         <div className="relative">
-          <span className="inline-flex rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">Admin</span>
+          <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-medium">Admin</span>
           <h1 className="mt-3 text-3xl font-bold sm:text-4xl">Institution overview</h1>
-          <p className="mt-1 text-sm text-white/80">Analytics across all departments, semesters and domains.</p>
+          <p className="mt-1 text-sm text-gray-400">Analytics across all departments, semesters and domains.</p>
           <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatTile label="Total students" value={kpis.students.toLocaleString()} icon={ico('users', 'h-5 w-5')} />
             <StatTile label="Overall pass rate" value={kpis.pass_rate === null ? '–' : `${kpis.pass_rate}%`} icon={ico('pass', 'h-5 w-5')} />
@@ -639,7 +645,7 @@ export default function AdminDashboard() {
           <ul className="max-h-60 space-y-3 overflow-y-auto pr-1">
             {activity.map((a) => (
               <li key={a.id} className="flex gap-3 text-sm">
-                <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-linear-to-br from-indigo-500 to-fuchsia-500" />
+                <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-indigo-500 shadow-sm shadow-indigo-500/50" />
                 <div>
                   <p className="text-slate-700">{a.action}</p>
                   <p className="text-xs text-slate-400">

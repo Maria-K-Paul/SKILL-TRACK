@@ -10,10 +10,14 @@ interface CardProps {
 
 export default function Card({ title, icon, children, className = '' }: CardProps) {
   return (
-    <section className={`rounded-2xl border border-slate-100 bg-white p-5 shadow-lg shadow-indigo-100/40 ${className}`}>
+    <section className={`rounded-3xl border border-slate-200/60 bg-white p-6 shadow-xl shadow-slate-200/40 transition-all hover:shadow-2xl hover:shadow-slate-200/50 ${className}`}>
       {title && (
-        <h2 className="mb-4 flex items-center gap-2.5 text-base font-semibold text-slate-800">
-          {icon && <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">{icon}</span>}
+        <h2 className="mb-5 flex items-center gap-3 text-lg font-bold tracking-tight text-slate-800">
+          {icon && (
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-inset ring-indigo-100/50">
+              {icon}
+            </span>
+          )}
           {title}
         </h2>
       )}

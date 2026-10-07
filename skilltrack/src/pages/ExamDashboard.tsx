@@ -63,7 +63,7 @@ const ico = (name: keyof typeof PATHS, className = 'h-4 w-4') => (
 )
 
 const primaryBtn =
-  'group inline-flex items-center justify-center gap-2 rounded-xl bg-linear-to-r from-indigo-600 to-purple-500 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition hover:-translate-y-0.5 hover:shadow-lg disabled:translate-y-0 disabled:from-slate-300 disabled:to-slate-300 disabled:shadow-none'
+  'group inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:-translate-y-0.5 hover:bg-indigo-500 hover:shadow-indigo-500/40 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none'
 
 const RULES: { icon: ReactNode; title: string; text: string }[] = [
   { icon: ico('expand', 'h-5 w-5'), title: 'Full-screen lock', text: 'The exam opens in full screen. Leaving it is recorded.' },
@@ -271,7 +271,7 @@ export default function ExamDashboard() {
         onCut={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}
       >
-        <header className="sticky top-0 z-10 bg-linear-to-r from-blue-600 via-violet-600 to-fuchsia-500 text-white shadow-lg">
+        <header className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/80 text-white shadow-lg backdrop-blur-lg">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
             <div className="flex items-center gap-3">
               <Logo />
@@ -343,7 +343,7 @@ export default function ExamDashboard() {
                 ))}
               </div>
               {error && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>}
-              <button disabled={busy} onClick={submit} className="mt-4 w-full rounded-xl bg-linear-to-r from-emerald-500 to-teal-500 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-emerald-200 transition hover:-translate-y-0.5 hover:shadow-lg disabled:translate-y-0 disabled:from-slate-300 disabled:to-slate-300 disabled:shadow-none">
+              <button disabled={busy} onClick={submit} className="group inline-flex items-center justify-center gap-2 mt-4 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:-translate-y-0.5 hover:bg-indigo-500 hover:shadow-indigo-500/40 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none">
                 {busy ? 'Submitting…' : 'Submit answers'}
               </button>
             </div>
@@ -374,13 +374,13 @@ export default function ExamDashboard() {
   /* ---------- Pre-exam and result screens ---------- */
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-blue-500 via-violet-500 to-fuchsia-400 p-6 text-white shadow-xl shadow-indigo-200 sm:p-8">
-        <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-white/15" />
-        <div className="pointer-events-none absolute -bottom-12 left-1/3 h-32 w-32 rounded-full bg-pink-300/30" />
+      <section className="relative overflow-hidden rounded-3xl bg-slate-950 p-6 text-white shadow-2xl sm:p-10">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-96 w-96 rounded-full bg-indigo-600/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 left-1/4 h-96 w-96 rounded-full bg-purple-600/20 blur-3xl" />
         <div className="relative">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">{ico('shield')} Safe exam mode</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium">{ico('shield')} Safe exam mode</span>
           <h1 className="mt-3 text-3xl font-bold">{stage === 'done' ? 'Your result' : 'Take your exam'}</h1>
-          <p className="mt-1 text-sm text-white/80">{stage === 'done' ? 'Here is how you did.' : 'Follow the steps below. The test runs in a locked, full-screen window.'}</p>
+          <p className="mt-1 text-sm text-gray-400">{stage === 'done' ? 'Here is how you did.' : 'Follow the steps below. The test runs in a locked, full-screen window.'}</p>
           {stage !== 'done' && <div className="mt-5"><Steps stage={stage} /></div>}
         </div>
       </section>
@@ -451,7 +451,7 @@ export default function ExamDashboard() {
 
       {stage === 'done' && result && (
         <>
-          <section className={`flex flex-col items-center gap-6 rounded-3xl p-6 text-white shadow-xl sm:flex-row sm:p-8 ${result.passed ? 'bg-linear-to-br from-emerald-500 to-teal-500 shadow-emerald-200' : 'bg-linear-to-br from-rose-500 to-orange-500 shadow-rose-200'}`}>
+          <section className={`flex flex-col items-center gap-6 rounded-3xl p-6 text-white shadow-sm sm:flex-row sm:p-8 ${result.passed ? 'bg-emerald-600' : 'bg-rose-600'}`}>
             <ScoreRing score={result.score} passed={result.passed} />
             <div className="text-center sm:text-left">
               <h2 className="text-2xl font-bold">{result.passed ? 'Congratulations, you passed! 🎉' : 'Not passed this time'}</h2>
@@ -487,7 +487,7 @@ export default function ExamDashboard() {
                     <li key={t.topic} className="text-sm">
                       <div className="flex justify-between font-medium"><span>{t.topic}</span><span>{t.score}%</span></div>
                       <div className="mt-1.5 h-2 rounded-full bg-slate-100">
-                        <div className={`h-2 rounded-full ${t.score >= 60 ? 'bg-linear-to-r from-emerald-400 to-teal-500' : 'bg-linear-to-r from-red-400 to-orange-400'}`} style={{ width: `${t.score}%` }} />
+                        <div className={`h-2 rounded-full ${t.score >= 60 ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: `${t.score}%` }} />
                       </div>
                     </li>
                   ))}

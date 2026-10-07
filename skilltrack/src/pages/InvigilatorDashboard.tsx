@@ -121,13 +121,13 @@ export default function InvigilatorDashboard() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-blue-500 via-violet-500 to-fuchsia-400 p-6 text-white shadow-xl shadow-indigo-200 sm:p-8">
-        <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/15" />
-        <div className="pointer-events-none absolute -bottom-14 left-1/3 h-36 w-36 rounded-full bg-pink-300/30" />
+      <section className="relative overflow-hidden rounded-3xl bg-slate-950 p-6 text-white shadow-2xl sm:p-10">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-96 w-96 rounded-full bg-indigo-600/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 left-1/4 h-96 w-96 rounded-full bg-purple-600/20 blur-3xl" />
         <div className="relative">
-          <span className="inline-flex rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">Invigilator</span>
+          <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-medium">Invigilator</span>
           <h1 className="mt-3 text-3xl font-bold sm:text-4xl">Exam keys</h1>
-          <p className="mt-1 max-w-xl text-sm text-white/80">Pick a test slot to issue a time-limited key. Only students who booked that slot can use it. If a key fails because of a network issue, issue a new one in person.</p>
+          <p className="mt-1 max-w-xl text-sm text-gray-400">Pick a test slot to issue a time-limited key. Only students who booked that slot can use it. If a key fails because of a network issue, issue a new one in person.</p>
           <div className="mt-6 grid max-w-md grid-cols-2 gap-3">
             <StatTile label="Active keys" value={activeCount} icon={ico('key', 'h-5 w-5')} />
             <StatTile label="Upcoming slots" value={slots.length} icon={ico('calendar', 'h-5 w-5')} />
@@ -152,7 +152,7 @@ export default function InvigilatorDashboard() {
                           type="button" onClick={() => setSlotId(s.id)}
                           className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left text-sm transition ${picked ? 'border-indigo-500 bg-indigo-50 ring-4 ring-indigo-100' : 'border-slate-200 hover:border-indigo-300 hover:shadow-md'}`}
                         >
-                          <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${picked ? 'bg-linear-to-br from-indigo-500 to-purple-500 text-white' : 'bg-indigo-50 text-indigo-600'}`}>{ico('calendar', 'h-5 w-5')}</span>
+                          <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${picked ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30' : 'bg-indigo-50 text-indigo-600'}`}>{ico('calendar', 'h-5 w-5')}</span>
                           <span className="min-w-0 flex-1">
                             <span className="block font-semibold text-slate-800">{fmtDate(s.starts_at)} · {fmtTime(s.starts_at)}</span>
                             <span className="block truncate text-xs text-slate-500">{s.domain_name} · {s.level_name}</span>
@@ -175,9 +175,9 @@ export default function InvigilatorDashboard() {
                       ) : (
                         <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">
                           {selectedSlot.students.map((st) => (
-                            <li key={st.id} className="flex items-center gap-3 rounded-xl bg-white p-2.5 text-sm shadow-sm">
-                              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-indigo-500 to-fuchsia-500 text-xs font-bold text-white">{st.name.trim().charAt(0).toUpperCase()}</span>
-                              <span className="font-semibold">{st.name}</span>
+                            <li key={st.id} className="flex items-center gap-3 rounded-xl bg-white p-2.5 text-sm shadow-sm transition-all hover:bg-slate-50">
+                              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 text-xs font-bold text-indigo-700 ring-1 ring-inset ring-indigo-600/20">{st.name.trim().charAt(0).toUpperCase()}</span>
+                              <span className="font-semibold text-slate-800">{st.name}</span>
                               <span className="ml-auto text-xs text-slate-500">{st.reg_no}</span>
                             </li>
                           ))}
@@ -229,9 +229,9 @@ export default function InvigilatorDashboard() {
       </Card>
 
       {latest && (
-        <section className="relative grid gap-6 overflow-hidden rounded-2xl bg-linear-to-br from-indigo-600 to-purple-600 p-6 text-white shadow-xl shadow-indigo-200 md:grid-cols-[auto_1fr]">
-          <div className="pointer-events-none absolute -left-8 -top-8 h-28 w-28 rounded-full bg-white/10" />
-          <div className="pointer-events-none absolute -bottom-10 -right-6 h-32 w-32 rounded-full bg-fuchsia-400/20" />
+        <section className="relative grid gap-6 overflow-hidden rounded-2xl bg-slate-950 p-6 text-white shadow-2xl md:grid-cols-[auto_1fr]">
+          <div className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 rounded-full bg-indigo-600/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-purple-600/20 blur-3xl" />
           <div className="relative flex flex-col items-center justify-center text-center">
             <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Latest key</p>
             <div className="mt-3 rounded-2xl border-2 border-dashed border-white/40 bg-white/10 px-6 py-4 font-mono text-4xl font-bold tracking-widest">{latest.code}</div>

@@ -50,7 +50,7 @@ const ico = (name: keyof typeof PATHS, className = 'h-4 w-4') => (
 )
 
 const primaryBtn =
-  'rounded-xl bg-linear-to-r from-indigo-600 to-purple-500 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition hover:-translate-y-0.5 hover:shadow-lg disabled:translate-y-0 disabled:from-slate-300 disabled:to-slate-300 disabled:shadow-none'
+  'group inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:-translate-y-0.5 hover:bg-indigo-500 hover:shadow-indigo-500/40 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none'
 
 function AiStatus({ state }: { state: FetchState<unknown> }) {
   if (state.loading) {
@@ -92,7 +92,7 @@ const STATUS_STYLE: Record<LevelStatus, string> = {
 
 const STATUS_DOT: Record<LevelStatus, string> = {
   cleared: 'bg-emerald-500 text-white',
-  active: 'bg-linear-to-br from-indigo-500 to-purple-500 text-white ring-4 ring-indigo-100',
+  active: 'bg-gray-900 text-white ring-4 ring-gray-100',
   locked: 'bg-slate-100 text-slate-400',
   removed: 'bg-red-100 text-red-500',
 }
@@ -181,8 +181,10 @@ export default function StudentDashboard() {
   return (
     <div className="space-y-6">
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-blue-500 via-violet-500 to-fuchsia-400 p-6 text-white shadow-xl shadow-indigo-200 sm:p-8 xl:min-h-72">
-        <div className="pointer-events-none absolute -left-12 -top-12 h-40 w-40 rounded-full bg-sky-300/40" />
+      <section className="relative overflow-hidden rounded-3xl bg-slate-950 p-6 text-white shadow-2xl sm:p-10 xl:min-h-72">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-96 w-96 rounded-full bg-indigo-600/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 left-1/4 h-96 w-96 rounded-full bg-purple-600/20 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 right-1/4 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
         <div className="relative z-10 max-w-xl xl:max-w-[55%]">
           <p className="text-sm font-medium text-white/80">Welcome back 👋</p>
           <h1 className="mt-1 text-3xl font-bold sm:text-4xl">{user.name}</h1>
@@ -210,15 +212,15 @@ export default function StudentDashboard() {
       {/* Semester stepper */}
       <Card title="Semester progress" icon={ico('cap')}>
         <div className="relative">
-          <div className="absolute top-5 h-1 rounded-full bg-slate-100" style={{ left: edge, right: edge }}>
-            <div className="h-full rounded-full bg-linear-to-r from-emerald-400 to-indigo-500 transition-all duration-700" style={{ width: `${semPct}%` }} />
+          <div className="absolute top-5 h-1.5 rounded-full bg-slate-100/80 shadow-inner" style={{ left: edge, right: edge }}>
+            <div className="h-full rounded-full bg-linear-to-r from-indigo-500 to-purple-500 shadow-md transition-all duration-700" style={{ width: `${semPct}%` }} />
           </div>
           <ol className="relative grid" style={{ gridTemplateColumns: `repeat(${semesters.length}, minmax(0, 1fr))` }}>
             {semesters.map((s) => {
               const state = s.sem < semester ? 'done' : s.sem === semester ? 'current' : 'upcoming'
               const dot = {
-                done: 'bg-emerald-500 text-white',
-                current: 'bg-linear-to-br from-indigo-500 to-purple-500 text-white ring-4 ring-indigo-100',
+                done: 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30',
+                current: 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/40 ring-4 ring-indigo-500/20',
                 upcoming: 'border-2 border-slate-200 bg-white text-slate-400',
               }[state]
               return (
@@ -245,8 +247,8 @@ export default function StudentDashboard() {
                 <div className="flex justify-between text-sm font-semibold">
                   <span>{r.domain}</span><span className="text-indigo-600">{r.match}% match</span>
                 </div>
-                <div className="mt-2 h-2 rounded-full bg-slate-200">
-                  <div className="h-2 rounded-full bg-linear-to-r from-indigo-500 to-fuchsia-500 transition-all duration-700" style={{ width: `${r.match}%` }} />
+                <div className="mt-2 h-2 rounded-full bg-slate-100/80 shadow-inner">
+                  <div className="h-2 rounded-full bg-linear-to-r from-indigo-500 to-purple-500 transition-all duration-700" style={{ width: `${r.match}%` }} />
                 </div>
                 <p className="mt-2 text-xs text-slate-500">{r.reason}</p>
               </li>
@@ -293,8 +295,8 @@ export default function StudentDashboard() {
                   <div className="text-4xl font-bold text-slate-900">
                     {enrollment.points} <span className="text-base font-normal text-slate-500">/ {data.points_to_unlock} pts</span>
                   </div>
-                  <div className="mt-3 h-3 rounded-full bg-slate-100">
-                    <div className="h-3 rounded-full bg-linear-to-r from-amber-400 to-orange-500 transition-all duration-700" style={{ width: `${pointsPct}%` }} />
+                  <div className="mt-3 h-3 rounded-full bg-slate-100/80 shadow-inner">
+                    <div className="h-3 rounded-full bg-linear-to-r from-indigo-500 to-purple-500 transition-all duration-700" style={{ width: `${pointsPct}%` }} />
                   </div>
                   <p className="mt-2 text-sm text-slate-500">
                     {enrollment.points >= data.points_to_unlock
@@ -411,7 +413,7 @@ export default function StudentDashboard() {
                 {data.skill_gap.weak.map((w) => (
                   <li key={w.topic} className="text-sm">
                     <div className="flex justify-between font-medium"><span>{w.topic}</span><span className="text-red-600">{w.score}%</span></div>
-                    <div className="mt-1.5 h-2 rounded-full bg-slate-100"><div className="h-2 rounded-full bg-linear-to-r from-red-400 to-orange-400" style={{ width: `${w.score}%` }} /></div>
+                    <div className="mt-1.5 h-2 rounded-full bg-slate-100"><div className="h-2 rounded-full bg-red-500" style={{ width: `${w.score}%` }} /></div>
                   </li>
                 ))}
               </ul>

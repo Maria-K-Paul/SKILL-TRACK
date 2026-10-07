@@ -72,7 +72,7 @@ const ico = (name: keyof typeof PATHS, className = 'h-4 w-4') => (
 const inputClass =
   'rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100'
 const primaryBtn =
-  'rounded-xl bg-linear-to-r from-indigo-600 to-purple-500 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition hover:-translate-y-0.5 hover:shadow-lg disabled:translate-y-0 disabled:cursor-not-allowed disabled:from-slate-300 disabled:to-slate-300 disabled:shadow-none'
+  'group inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:-translate-y-0.5 hover:bg-indigo-500 hover:shadow-indigo-500/40 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none'
 
 function StatTile({ label, value, icon }: { label: string; value: ReactNode; icon: ReactNode }) {
   return (
@@ -199,13 +199,13 @@ export default function OwnerDashboard() {
   return (
     <div className="space-y-6">
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-blue-500 via-violet-500 to-fuchsia-400 p-6 text-white shadow-xl shadow-indigo-200 sm:p-8">
-        <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/15" />
-        <div className="pointer-events-none absolute -bottom-14 left-1/3 h-36 w-36 rounded-full bg-pink-300/30" />
+      <section className="relative overflow-hidden rounded-3xl bg-slate-950 p-6 text-white shadow-2xl sm:p-10">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-96 w-96 rounded-full bg-indigo-600/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 left-1/4 h-96 w-96 rounded-full bg-purple-600/20 blur-3xl" />
         <div className="relative">
-          <span className="inline-flex rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">Track owner</span>
+          <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-medium">Track owner</span>
           <h1 className="mt-3 text-3xl font-bold sm:text-4xl">{data.domain.name}</h1>
-          <p className="mt-1 text-sm text-white/80">Manage students, test levels, slots and your question bank.</p>
+          <p className="mt-1 text-sm text-gray-400">Manage students, test levels, slots and your question bank.</p>
           <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatTile label="Enrolled students" value={data.students.length} icon={ico('users', 'h-5 w-5')} />
             <StatTile label="Active" value={count('Active')} icon={ico('pulse', 'h-5 w-5')} />
@@ -226,7 +226,7 @@ export default function OwnerDashboard() {
                 <tr key={s.id} className="transition hover:bg-indigo-50/40">
                   <td className="py-3">
                     <div className="flex items-center gap-3">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-linear-to-br from-indigo-500 to-fuchsia-500 text-xs font-bold text-white">{s.name.trim().charAt(0).toUpperCase()}</span>
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-50 text-xs font-bold text-indigo-700 ring-1 ring-inset ring-indigo-600/20">{s.name.trim().charAt(0).toUpperCase()}</span>
                       <span className="font-semibold text-slate-800">{s.name}</span>
                     </div>
                   </td>

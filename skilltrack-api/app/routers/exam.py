@@ -45,7 +45,7 @@ def _slot_out(db: Session, slot: Slot, with_students: bool = True) -> dict:
     students = _slot_students(db, slot.id)
     return {
         "id": slot.id, "level_id": level.id, "level_name": level.name, "domain_name": level.domain.name,
-        "starts_at": slot.starts_at, "venue": slot.venue, "capacity": slot.capacity,
+        "starts_at": _aware(slot.starts_at), "venue": slot.venue, "capacity": slot.capacity,
         "booked": len(students), "students": students if with_students else [],
     }
 
@@ -56,7 +56,7 @@ def _key_out(db: Session, k: ExamKey, level: Level) -> dict:
     return {
         "id": k.id, "code": k.code, "level_id": level.id, "level_name": level.name,
         "domain_name": level.domain.name,
-        "expires_at": k.expires_at, "seconds_left": max(0, left),
+        "expires_at": _aware(k.expires_at), "seconds_left": max(0, left),
         "slot": _slot_out(db, slot) if slot else None,
     }
 
@@ -192,7 +192,7 @@ def my_slot(db: Session = Depends(get_db), user: User = Depends(student_only)):
         return None
     level = db.get(Level, slot.level_id)
     return {
-        "id": slot.id, "starts_at": slot.starts_at, "venue": slot.venue,
+        "id": slot.id, "starts_at": _aware(slot.starts_at), "venue": slot.venue,
         "level_name": level.name, "domain_name": level.domain.name,
         "seconds_until_start": max(0, int((_aware(slot.starts_at) - _now()).total_seconds())),
     }
