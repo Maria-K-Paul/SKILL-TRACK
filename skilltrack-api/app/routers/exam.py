@@ -57,10 +57,9 @@ def _key_out(db: Session, k: ExamKey) -> dict:
     left = int((_aware(k.expires_at) - _now()).total_seconds())
     slot = db.get(Slot, k.slot_id) if k.slot_id else None
     domain = db.get(Domain, k.domain_id)
-    level = db.get(Level, k.level_id) if k.level_id else None
     return {
         "id": k.id, "code": k.code, "domain_id": domain.id, "domain_name": domain.name,
-        "level_name": level.name if level else f"{domain.name} (any level)",
+        "level_name": domain.name,  # Frontend compatibility - shows domain name
         "expires_at": _aware(k.expires_at), "seconds_left": max(0, left),
         "slot": _slot_out(db, slot) if slot else None,
     }
@@ -92,24 +91,16 @@ def keyable_slots(db: Session = Depends(get_db), _: User = Depends(staff)):
 
 @router.post("/keys", status_code=status.HTTP_201_CREATED)
 def issue_key(body: KeyIn, db: Session = Depends(get_db), user: User = Depends(staff)):
-    slot = None
-    domain_id = None
-    level_id = None
+    # Keys must be slot-based only - students at any level in that domain can use the key
+    if body.slot_id is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "slot_id is required. Keys must be issued for a specific slot.")
 
-    if body.slot_id is not None:
-        # Key for a specific slot - any level student in that domain can use it
-        slot = db.get(Slot, body.slot_id)
-        if slot is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Slot not found")
-        domain_id = slot.domain_id
-        level_id = None  # Will be determined from student's enrollment
-    else:
-        # Key for a specific level (legacy mode or manual override)
-        level = db.get(Level, body.level_id)
-        if level is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Level not found")
-        domain_id = level.domain_id
-        level_id = level.id
+    slot = db.get(Slot, body.slot_id)
+    if slot is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Slot not found")
+
+    domain_id = slot.domain_id
+    level_id = None  # Students use their enrollment's current_level, not slot's level
 
     for _ in range(20):
         code = f"SKL-{secrets.randbelow(9000) + 1000}"
