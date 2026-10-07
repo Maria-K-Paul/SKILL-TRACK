@@ -185,7 +185,7 @@ def my_slot(db: Session = Depends(get_db), user: User = Depends(student_only)):
     since = _now() - timedelta(hours=6)
     slot = db.scalar(
         select(Slot).join(SlotBooking, SlotBooking.slot_id == Slot.id)
-        .where(SlotBooking.user_id == user.id, Slot.starts_at >= since)
+        .where(SlotBooking.user_id == user.id, SlotBooking.status == "booked", Slot.starts_at >= since)
         .order_by(Slot.starts_at).limit(1)
     )
     if slot is None:

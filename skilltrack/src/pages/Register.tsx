@@ -89,8 +89,6 @@ export default function Register() {
             {DEPARTMENTS.map((d) => <option key={d}>{d}</option>)}
           </select>
         </Field>
-        {/* <p className="rounded-xl bg-indigo-50 px-3 py-2 text-xs text-indigo-700">Everyone starts with the Semester 1 common assessment. You move up as you clear each test.</p> */}
-
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Password" icon="lock">
             <input
