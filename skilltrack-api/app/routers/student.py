@@ -378,12 +378,15 @@ def dashboard(user: User = Depends(student_only), db: Session = Depends(get_db))
         result["skill_gap"] = {"level_name": level.name, "weak": latest.skill_gaps}
 
     if active_level:
-        # Fetch student's booked slot in this domain (any level)
-        booked = db.scalar(
-            select(SlotBooking.slot_id).join(Slot, Slot.id == SlotBooking.slot_id)
+        # Student's active booking in this domain (any level), with its change/cancel window for the dashboard
+        booking = db.scalar(
+            select(SlotBooking).join(Slot, Slot.id == SlotBooking.slot_id)
             .where(SlotBooking.user_id == user.id, Slot.domain_id == domain.id, SlotBooking.status == "booked")
         )
-        result["booked_slot_id"] = booked
+        if booking:
+            booked_slot = db.get(Slot, booking.slot_id)
+            result["booked_slot_id"] = booking.slot_id
+            result["active_booking"] = _booking_out(booking, booked_slot, db.get(Level, booked_slot.level_id))
         # Fetch all upcoming slots for this domain (students can book any slot regardless of level)
         # Use timezone-aware datetime for consistent comparison
         now = datetime.now(timezone.utc)
