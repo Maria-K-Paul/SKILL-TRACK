@@ -3,7 +3,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import delete, exists, select
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -19,6 +19,9 @@ staff = require_roles("invigilator", "admin")
 student_only = require_roles("student")
 
 LATE_GRACE = timedelta(minutes=2)
+# Expired keys are deleted this long after expiry (if no exam used them), so a student starting
+# right at the expiry moment never races the delete
+KEY_CLEANUP_DELAY = timedelta(minutes=10)
 GAP_THRESHOLD = 60  # topics scored below this % are reported as skill gaps
 
 
@@ -109,6 +112,12 @@ def issue_key(body: KeyIn, db: Session = Depends(get_db), user: User = Depends(s
     domain_id = slot.domain_id
     level_id = None  # Students use their enrollment's current_level, not slot's level
 
+    # Expired keys no exam used are worthless, so drop them. Keys an exam used stay as part of its record.
+    db.execute(delete(ExamKey).where(
+        ExamKey.expires_at <= _now() - KEY_CLEANUP_DELAY,
+        ~exists().where(ExamSession.key_id == ExamKey.id),
+    ))
+
     for _ in range(20):
         code = f"SKL-{secrets.randbelow(9000) + 1000}"
         if db.scalar(select(ExamKey.id).where(ExamKey.code == code)) is None:
@@ -138,19 +147,11 @@ def issue_key(body: KeyIn, db: Session = Depends(get_db), user: User = Depends(s
 
 
 @router.get("/keys")
-def recent_keys(db: Session = Depends(get_db), user: User = Depends(staff)):
-    # Show all recent keys to all staff for better coordination
-    # Admins see all keys, invigilators see keys from last 24 hours
-    if user.role == "admin":
-        keys = db.scalars(
-            select(ExamKey).order_by(ExamKey.id.desc()).limit(20)
-        ).all()
-    else:
-        # Invigilators see recent keys (last 24 hours) from all staff
-        since = _now() - timedelta(hours=24)
-        keys = db.scalars(
-            select(ExamKey).where(ExamKey.created_at >= since).order_by(ExamKey.id.desc()).limit(15)
-        ).all()
+def recent_keys(db: Session = Depends(get_db), _: User = Depends(staff)):
+    # Only keys that can still be used, from all staff; past keys are not shown
+    keys = db.scalars(
+        select(ExamKey).where(ExamKey.expires_at > _now()).order_by(ExamKey.id.desc()).limit(20)
+    ).all()
     return [_key_out(db, k) for k in keys]
 
 
