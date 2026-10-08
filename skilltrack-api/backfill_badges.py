@@ -1,4 +1,4 @@
-"""Idempotent backfill: run this once (or any number of times) after migrate.py.
+"""Idempotent backfill: run this once (or any number of times) after migrate_db.py.
 
 What it does:
   1. Awards badges for every already-passed level attempt (one badge per student per level).
