@@ -90,10 +90,12 @@ export default function InvigilatorDashboard() {
   }, [])
 
   const selectedSlot = slots.find((s) => s.id === slotId)
-  const latest = keys[0]
   const left = (k: ExamKey) => Math.max(0, Math.floor((new Date(k.expires_at).getTime() - now) / 1000))
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-  const activeCount = keys.filter((k) => left(k) > 0).length
+  // Past keys are not shown; a key drops off the page the moment it expires
+  const activeKeys = keys.filter((k) => left(k) > 0)
+  const latest = activeKeys[0]
+  const activeCount = activeKeys.length
   const ready = slotId !== ''
 
   async function issue() {
@@ -219,9 +221,9 @@ export default function InvigilatorDashboard() {
           <div className="relative flex flex-col items-center justify-center text-center">
             <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Latest key</p>
             <div className="mt-3 rounded-2xl border-2 border-dashed border-white/40 bg-white/10 px-6 py-4 font-mono text-4xl font-bold tracking-widest">{latest.code}</div>
-            <p className={`mt-3 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold ${left(latest) > 0 ? 'bg-emerald-400/90 text-emerald-950' : 'bg-red-500 text-white'}`}>
-              {left(latest) > 0 && <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-900" />}
-              {ico('clock')} {left(latest) > 0 ? `Expires in ${fmt(left(latest))}` : 'Expired'}
+            <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-400/90 px-4 py-1.5 text-sm font-semibold text-emerald-950">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-900" />
+              {ico('clock')} Expires in {fmt(left(latest))}
             </p>
             <button onClick={() => copy(latest.code)} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold transition hover:bg-white/30">
               {ico(copied ? 'check' : 'copy')} {copied ? 'Copied' : 'Copy key'}
@@ -254,27 +256,24 @@ export default function InvigilatorDashboard() {
         </section>
       )}
 
-      {keys.length > 1 && (
-        <Card title="Recent keys" icon={ico('list')}>
+      {activeKeys.length > 1 && (
+        <Card title="Other active keys" icon={ico('list')}>
           <ul className="space-y-2">
-            {keys.slice(1).map((k) => {
-              const live = left(k) > 0
-              return (
-                <li key={k.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-3 text-sm transition hover:shadow-md">
-                  <div className="flex items-center gap-3">
-                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${live ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>{ico('key', 'h-5 w-5')}</span>
-                    <div>
-                      <div className="font-mono font-semibold tracking-wider">{k.code}</div>
-                      <div className="text-xs text-slate-500">
-                        {k.domain_name}
-                        {k.slot ? ` · ${fmtDate(k.slot.starts_at)} ${fmtTime(k.slot.starts_at)} · ${k.slot.venue} · ${k.slot.students.length} students` : ' · no slot'}
-                      </div>
+            {activeKeys.slice(1).map((k) => (
+              <li key={k.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-3 text-sm transition hover:shadow-md">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">{ico('key', 'h-5 w-5')}</span>
+                  <div>
+                    <div className="font-mono font-semibold tracking-wider">{k.code}</div>
+                    <div className="text-xs text-slate-500">
+                      {k.domain_name}
+                      {k.slot ? ` · ${fmtDate(k.slot.starts_at)} ${fmtTime(k.slot.starts_at)} · ${k.slot.venue} · ${k.slot.students.length} students` : ' · no slot'}
                     </div>
                   </div>
-                  <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${live ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{live ? fmt(left(k)) : 'Expired'}</span>
-                </li>
-              )
-            })}
+                </div>
+                <span className="shrink-0 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">{fmt(left(k))}</span>
+              </li>
+            ))}
           </ul>
         </Card>
       )}
